@@ -4,7 +4,7 @@
 .eqv SCORE_COLOR 0x0b0b0b0b
 .eqv FUEL_COLOR 0x00 											# Cor do combustível
 
-.eqv MAX_LEFT_EDGE 8
+.eqv MAX_BANK_SIZE 7											
 
 .eqv VGAADDRESSINI0     0xFF000000
 .eqv VGAADDRESSFIM0     0xFF012C00
@@ -13,7 +13,7 @@
 
 .data
 	blockList: .space 6
-	blockCurrent: .byte 0x71									# Cada parte de uma dos blocos visíveis é representada por um byte
+	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
 	pfWriteOffset: .byte 0
 	pfReadStartOffset: .byte 160
@@ -23,6 +23,7 @@
 .text
 
 # Incluir SYSTEMv17 mais tarde
+# Incluir explicação sobre o byte do bloco e como é usado para gerar uma linha
 
 # Setup inicial
 demo:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
@@ -86,32 +87,36 @@ createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 									
 					lbu		t6,	0(s0)					# Carregamos ID do bloco atual, para criarmos o próximo					
 					li		t0,	0x0000000f				# Bitmask para separar os números correspondentes à largura do rio do bloco anterior
-					and		s2,	t6,	t0				# Borda direita anterior. Esse será o valor mínimo da distância esquerda atual
-					li		t0,	0x000000f0				# Agora isolando o valor da borda esquerda
+					and		s2,	t6,	t0				# Número de blocos de rio
+					li		t0,	0x000000f0				# Agora isolando o valor de blocos de terra
 					and 		s3,	t6,	t0				# Aplicação do bitmask
 					srli		s3,	s3,	4				# Movendo os bits para a direita
-					li		t1,	MAX_LEFT_EDGE				# Preparando o valor máximo do número gerado
-					sub		t1,	t1,	s2
 					
 					
-	# Como não podemos escolher valor mínimo para o RNG (sempre é 0), colocaremos o valor máximo subtraído do mínimo. Ao final, somaremos o valor mínimo ao número aleatório,
-	# conseguindo, assim, o intervalo que queríamos no começo.
-	# Gerando o primeiro número aleatório
- 					mv		a1,	a2 					# Setting up the seed
-					li		a7,	40
-					ecall					
-					mv		a1,	t1					# Gerando o número
-					li		a7,	42
+	# Gerando o primeiro número aleatório				
+					li		a7,	41					# Gerando o número
 					ecall
-					mv		s4,	a0					# Salvando o número gerado e somando ao valor mínimo
-					add		s4,	s4,	s2
+					add		t1,	s2,	s3				# a' deve estar em [0, a+b), para isso usamos a função mod
+					remu		s4,	a0,	t1				# a' = random mod (a+b)
 					
 	# A decisão do segundo número depende do valor do primeiro (borda esquerda). Precisamos ter certeza que não será criado um bloco impossível de ser atravessado.
-
-					mv		a1,	s4					# Valor máximo da borda direita nova deve ser menor ou igual ao da esquerda
-					ble		s4,	s3,	createBlock.noRestrict		# Se o novo valor da borda esquerda for menor ou igual, não há problemas
-					mv		a1,	s3					# Caso não, o valor máximo da borda direita será o valor da borda esquerda anterior					
-	createBlock.noRestrict:		ecall								# Já que a7 não foi alterado..
+	
+					ecall								# a7 não foi alterado, pegamos novo aleatório
+								
+	# Fórmula: b' = R mod (7 - max(a', a)) + m + 1
+	# m = 0, se a' >= a ; m = a - a', se a' < a
+					
+					# a1 = max(a', a)
+					mv		a1,	s4					# a1 = a'
+					mv		a2,	zero					# a2 = m = 0
+					bge		s4,	s3,	createBlock.noAdjust		# Se a' >= a, pulamos
+					mv		a1,	s3					# a1 = a
+					sub		a2,	s3,	s4				# m = a' - a
+	createBlock.noAdjust:		li		t0,	7
+					sub		t0,	t0,	a1				# t0 = 7 - max(a', a)
+					remu		a0,	a0,	t0				# a0 = R mod (7 - max(a', a))
+					add		a0,	a0,	a2				# a0 += m
+					addi		a0,	a0,	1				# a0++ ; Fórmula completa
 					
 	# Hora de colocar os dois números em um byte só
 					slli		s4,	s4,	4				# Colocamos a borda esquerda na parte superior do byte
@@ -178,11 +183,9 @@ renderPlayfield:			li		t0,	0					# i = 0
 						and		t4,	t2,	t4			# Borda esquerda
 						srli		t4,	t4,	4
 						
-						# Pintando terra extra
+						# Pintando terra extra.
 						li		t5,	0				# j = 0
-						li		t6,	MAX_LEFT_EDGE			# Vemos quantos blocos de terra precisamos pintar
-						sub		t6,	t6,	t4			# Max_Edge - borda esquerda nos dá o número de blocos de terra
-	renderPlayfield.drawLeftBank:		beq		t5,	t6,	renderPlayfield.drawRiver
+	renderPlayfield.drawLeftBank:		beq		t5,	t4,	renderPlayfield.drawRiver
 						
 							sw		a5,	0(a3)			# Pintando mais terra
 							sw		a5,	4(a3)
@@ -194,9 +197,7 @@ renderPlayfield:			li		t0,	0					# i = 0
 							j		renderPlayfield.drawLeftBank
 							
 	renderPlayfield.drawRiver:		li		t5,	0				# j = 0
-						sub		t6,	t4,	t3			# Borda esquerda - Borda direita - 1 = número de blocos de rio
-						addi		t6,	t6,	-1
-	renderPlayfield.drawRiverLoop:		beq		t5,	t6,	renderPlayfield.drawIsle
+	renderPlayfield.drawRiverLoop:		beq		t5,	t3,	renderPlayfield.drawIsle
 	
 							sw		a6,	0(a3)			# Pintando rio
 							sw		a6,	4(a3)
@@ -208,7 +209,9 @@ renderPlayfield:			li		t0,	0					# i = 0
 							j		renderPlayfield.drawRiverLoop
 							
 	renderPlayfield.drawIsle:		li		t5,	0				# j = 0
-						mv		t6,	t3				# Borda direita = número de blocos da ilha ?
+						li		t6,	7				# Número restante de terra é igual 7 - a - b
+						sub		t6,	t6,	t3
+						sub		t6,	t6,	t4
 	renderPlayfield.drawIsleLoop:		beq		t5,	t6,	renderPlayfield.mirror
 	
 							sw		a5,	0(a3)			# Pintando mais terra
