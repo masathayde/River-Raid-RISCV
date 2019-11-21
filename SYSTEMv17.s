@@ -516,7 +516,7 @@ ecallException:   addi    sp, sp, -264              # Salva todos os registrador
 	goToMidiOutSync: jal     midiOutSync   		# chama MIDIoutSync
 		j       endEcall
 
-	goToTime:	jal     time                    # chama time
+	goToTime:	jal ra     time                    # chama time
 		j       endEcall
 
 	goToSleep:	jal     sleep                  	# chama sleep

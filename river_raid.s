@@ -6,13 +6,25 @@
 
 .eqv MAX_BANK_SIZE 7											
 
+.eqv TIMESTEP 40											# Em ms
+
 .eqv VGAADDRESSINI0     0xFF000000
 .eqv VGAADDRESSFIM0     0xFF012C00
 .eqv VGAADDRESSINI1     0xFF100000
 .eqv VGAADDRESSFIM1     0xFF112C00 
+.eqv VGAFRAMESELECT	0xFF200604
 
 .data
+	
+	gameTime: .word 0
+
+
+	framePtr: .word 0
+	
+	frameToShow: .byte 1
+
 	blockList: .space 6
+	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
 	pfWriteOffset: .byte 0
@@ -20,27 +32,26 @@
 	pfReadEndOffset: .byte 0
 	playfield: .space 192										# 160 linhas são visíveis ao mesmo tempo, 32 a mais para armazenar novo bloco
 	
+	
+	scrollSpeed: .byte 3
 .text
 
 # Incluir SYSTEMv17 mais tarde
 # Incluir explicação sobre o byte do bloco e como é usado para gerar uma linha
 
 # Setup inicial
-demo:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
- 					csrrw 		zero,5,tp 	# seta utvec (reg 5) para o endereço tp
- 					csrrsi 		zero,0,1 	# seta o bit de habilitação de interrupção em ustatus (reg 0)
+Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
+ 					csrrw 		zero,5,tp 		# seta utvec (reg 5) para o endereço tp
+ 					csrrsi 		zero,0,1 		# seta o bit de habilitação de interrupção em ustatus (reg 0)
 
-					li		a7,	30					# Usamos o tempo como seed para o RNG
-					ecall
-					mv		s1,	a0
-
+	# Preparamos tudo que for necessário para começar o jogo.
+	InitSetup:
 
 					li		s0,	6					# i = 6
 	InitSetup.genMap:		beq		s0,	zero,	InitSetup.genMap.end		# (while i > 0)
 						
-						la		a0,	blockCurrent			
-						la		a1,	blockPrevious	
-						mv		a2,	s1
+						la		a0,	blockCurrent			# Geração dos blocos no mapa	
+						la		a1,	blockPrevious
 						call		createBlock
 		
 						la		a0,	playfield
@@ -58,15 +69,84 @@ demo:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		s0,	s0,	-1			# i--
 						j		InitSetup.genMap
 						
-	InitSetup.genMap.end:			la		a0,	playfield
-						la		t0,	pfReadStartOffset
+	InitSetup.genMap.end:
+	
+	
+	InitSetup.end:
+	
+	# Loop principal do jogo
+	# Pegamos o tempo no começo de cada ciclo para calcularmos o tempo de sleep no final, com base no time step escolhido
+	MainLoop:				nop # placeholder
+	
+						# Get Frame Start Time
+						# Para o RARS
+						la		t0,	gameTime			# Aqui salvaremos o tempo no começo do ciclo
+						li		a7,	30				# Chamamos o ecall time
+						ecall						
+						sw		a0,	0(t0)				# Salvamos em time
+			
+			
+	# Fase de renderização
+	# Usa-se a técnica de double buffering para evitar o efeito de "piscamento"
+	Render:					la		t0,	frameToShow			# Trocamos de frame
+						la		t2,	framePtr			# Ponteiro para o frame no qual será desenhado o mapa
+						lbu		t1,	0(t0)
+						xori		t1,	t1,	1			# O uso de xor inverte o bit
+						sb		t1,	0(t0)				# Guardamos o valor de volta em frameToShow
+						li		t3,	VGAADDRESSINI0			# Inicialmente escolhemos o frame 0
+						beq		t1,	zero,	Render.selectF0		# Mas é realmente o frame 0?
+						li		t3,	VGAADDRESSINI1			# Não, então escolhe-se frame 1						
+	Render.selectF0:			sw		t3,	0(t2)				# Salvar em framePtr
+						
+	
+						la		a0,	playfield			# Carrega endereço do mapa
+						la		t0,	pfReadStartOffset		# Carrega posição de ínico de leitura
 						lbu		a1,	0(t0)
-						la		t0,	pfReadEndOffset
+						la		t0,	pfReadEndOffset			# Carrega posição de final de leitura
 						lbu		a2,	0(t0)
-						li		a3,	VGAADDRESSINI0
+						la		t0,	framePtr			# Endereço do frame a desenhar
+						lw		a3,	0(t0)
 						call		renderPlayfield
 						
-						li		a7,	10
+						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
+						lbu		t1,	0(t0)
+						li		t0,	VGAFRAMESELECT
+						sb		t1,	0(t0)
+						
+						# Atualização dos offsets
+						la		t0,	pfReadStartOffset		# Pegando o offset atual
+						lbu		t1,	0(t0)
+						la		t2,	scrollSpeed			# Pegando velocidade de scroll
+						lbu		t3,	0(t2)
+						add		t1,	t1,	t3			# Atualizando o offset em si
+						li		t4,	192				# Fazendo o wrap around (se o offset passar de 192, deve voltar ao começo)
+						remu		t1,	t1,	t4
+						sb		t1,	0(t0)
+						
+						
+	
+						# Cálculo de sleep time
+	Wait:					nop
+						la		t0,	gameTime			# Recuperamos o tempo salvo no começo do ciclo
+						lw		t1,	0(t0)
+						####### RARS {			
+						li		a7,	30				# Pegando o tempo novo
+						ecall
+						####### } RARS												
+						sub		t1,	a0,	t1			# Calculamos quanto tempo se passou
+						li		t2,	TIMESTEP			
+						sub		t2,	t2,	t1			# Calculamos quanto tempo a mais precisamos esperar
+						bge		t2,	zero,	Wait.noAdjust		# Caso tenha se passado mais tempo que o time step, corrigimos o valor de wait para zero
+						li		t2,	0
+	Wait.noAdjust:				mv		a0,	t2				# Usamos o ecall para esperar o tempo calculado até o próximo ciclo
+						li		a7,	32
+						ecall
+						
+						j		MainLoop				# Voltando ao ínicio
+						
+						
+						# Fim do programa
+						li		a7,	10				
 						ecall	
 						
 			
@@ -74,7 +154,6 @@ demo:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # Criar bloco no próximo espaço de 32 linhas disponível
 # a0: Endereço do bloco atual (que será substituído)
 # a1: Endereço para armazenar bloco atual após substituição
-# a2: Seed para RNG
 createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 					sw		s0,	0(sp)
 					sw		s1,	4(sp)
@@ -227,7 +306,7 @@ renderPlayfield:			li		t0,	0					# i = 0
 						li		t6,	40				# Agora espelhamos a parte esquerda (40 partes de 4 pixels)
 						mv		a7,	a3				# a7 : parte esquerda, fazendo o caminho de volta, do meio até a ponta esquerda da linha
 						addi		a7,	a7,	-4
-	renderPlayfield.mirrorLoop:		beq		t5,	t6,	renderPlayfield.drawLine.next # while ( j < 160)	
+	renderPlayfield.mirrorLoop:		beq		t5,	t6,	renderPlayfield.drawLine.next # while ( j < 40)	
 							
 							lw		t4,	0(a7)
 							sw		t4,	0(a3)
