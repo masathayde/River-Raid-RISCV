@@ -27,13 +27,16 @@
 	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
+	
+	lineDrawnCounter: .byte 0									# Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
+	
 	pfWriteOffset: .byte 0
 	pfReadStartOffset: .byte 160
 	pfReadEndOffset: .byte 0
 	playfield: .space 192										# 160 linhas são visíveis ao mesmo tempo, 32 a mais para armazenar novo bloco
 	
 	
-	scrollSpeed: .byte 3
+	scrollSpeed: .byte 9
 .text
 
 # Incluir SYSTEMv17 mais tarde
@@ -64,7 +67,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
 						lbu		t1,	0(t0)
 						addi		t1,	t1,	32
+						li		t2,	192
+						remu		t1,	t1,	t2			# Wraparound
 						sb		t1,	0(t0)
+						
 						
 						addi		s0,	s0,	-1			# i--
 						j		InitSetup.genMap
@@ -122,6 +128,42 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						li		t4,	192				# Fazendo o wrap around (se o offset passar de 192, deve voltar ao começo)
 						remu		t1,	t1,	t4
 						sb		t1,	0(t0)
+						
+						# Checagem para criação de bloco novo
+						la		t0,	lineDrawnCounter
+						lbu		t1,	(t0)
+						la		t2,	scrollSpeed
+						lbu		t3,	0(t2)
+						add		t1,	t1,	t3
+						li		t4,	32
+						remu		t5,	t1,	t4			# Resetamos o contador, mas com o número de linhas acima de 32
+						sb		t5,	0(t0)				# Armazenamos na memória o valor
+						blt		t1,	t4,	NoNewBlock		# Se foram desenhadas menos de 32 linhas, nada a fazer
+						
+						## Ctrl C
+						la		a0,	blockCurrent			# Geração do bloco novo
+						la		a1,	blockPrevious
+						call		createBlock
+		
+						la		a0,	playfield
+						la		t0,	pfWriteOffset
+						lbu		a1,	0(t0)
+						la		t0,	blockCurrent
+						lbu		a2,	0(t0)
+						call		writeBlockToPlayfield
+						
+						la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
+						lbu		t1,	0(t0)
+						addi		t1,	t1,	32
+						li		t2,	192
+						remu		t1,	t1,	t2			# Wraparound
+						sb		t1,	0(t0)
+						## Ctrl V
+	NoNewBlock:				nop
+						
+						
+						
+						
 						
 						
 	
