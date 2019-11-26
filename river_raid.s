@@ -15,15 +15,14 @@
 .eqv VGAFRAMESELECT	0xFF200604
 
 .data
-	
+	# Tentar agrupar todos os words no começo para não precisar usar .align
 	gameTime: .word 0
-
 
 	framePtr: .word 0
 	
 	frameToShow: .byte 1
+	scrollSpeed: .byte 9
 
-	blockList: .space 6
 	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
@@ -36,7 +35,20 @@
 	playfield: .space 192										# 160 linhas são visíveis ao mesmo tempo, 32 a mais para armazenar novo bloco
 	
 	
-	scrollSpeed: .byte 9
+	.align 2
+		
+	objectList: .space 256										# Somente 6 objetos por tela
+	# objectType: .byte
+	# objectState: .byte			
+	# objectXpos: .byte
+	# objectYpos: .byte
+	# objectHeight: .byte
+	# objectWidth: .byte
+	# objectDirection: .byte
+	# objectAnimationCounter: .byte
+	# objectIsAnim: .byte
+	# objectBitmapPtr: .word
+	
 .text
 
 # Incluir SYSTEMv17 mais tarde
@@ -106,7 +118,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 	
 						la		a0,	playfield			# Carrega endereço do mapa
-						la		t0,	pfReadStartOffset		# Carrega posição de ínico de leitura
+						la		t0,	pfReadStartOffset		# Carrega posição de ínicio de leitura
 						lbu		a1,	0(t0)
 						la		t0,	pfReadEndOffset			# Carrega posição de final de leitura
 						lbu		a2,	0(t0)
@@ -118,7 +130,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		t1,	0(t0)
 						li		t0,	VGAFRAMESELECT
 						sb		t1,	0(t0)
-						
+	# Update					
 						# Atualização dos offsets
 						la		t0,	pfReadStartOffset		# Pegando o offset atual
 						lbu		t1,	0(t0)
@@ -140,7 +152,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						sb		t5,	0(t0)				# Armazenamos na memória o valor
 						blt		t1,	t4,	NoNewBlock		# Se foram desenhadas menos de 32 linhas, nada a fazer
 						
-						## Ctrl C
 						la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
 						call		createBlock
@@ -157,13 +168,27 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		t1,	t1,	32
 						li		t2,	192
 						remu		t1,	t1,	t2			# Wraparound
-						sb		t1,	0(t0)
-						## Ctrl V
+						sb		t1,	0(t0)						
 	NoNewBlock:				nop
 						
 						
-						
-						
+	# TESTE					
+						la		t0, testObjY
+						lw		t1, 0(t0)
+						addi		t1,	t1,	9
+						sw		t1, 0(t0)
+	
+						li		a0, 120
+						la		t0, testObjY
+						lw		a1, 0(t0)
+						#li		a1, 140
+						li		a2, 10
+						li		a3, 8
+						la		a4, testObj
+						la		t0, framePtr
+						lw		a5, 0(t0)
+						call	drawObject
+								
 						
 						
 	
@@ -373,9 +398,72 @@ renderPlayfield:			li		t0,	0					# i = 0
 							addi		t1,	t1,	-1
 							j		renderPlayfield.drawBottom
 						
-	renderPlayfield.drawBottom.end:		ret
+	renderPlayfield.drawBottom.end:	ret
 						
+
+				
+#############################
+# Desenha um objeto na tela				
+# a0: Coordenada X
+# a1: Coordenada Y
+# a2: Altura do objeto
+# a3: Largura do objeto
+# a4: Endereço do bitmap do objeto
+# a5: Endereço do VGA
+############################
+
+drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visível
+					li		t0,	160				# Número máximo de linhas visíveis
+					sub		t1,	a1,	a2			# t1 = coordenada do topo do objeto
+					bgt		t1,	t0,	drawObject.finish	# Se o topo estiver acima de 160, objeto não é visível
+
+	drawObject.start:		beq		a2,	zero,	drawObject.finish		# while (height > 0 )
 						
+						# Calculando o endereço no VGA
+						li		t0,	320
+						mul		t0,	a1,	t0			# Y*320
+						add		t0,	t0,	a0			# t0 = Y*320 + X
+						add		t0,	t0,	a5			# VGAStart + t0 é o endereço
+						
+						mv		a6,	a3				# a6 = j = largura do objeto
+	drawObject.drawLine:			beq		a6,	zero,	drawObject.drawLine.end # while (j > 0 )
+							
+							li		t5,	160
+							bgtu		a1,	t5,	drawObject.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
+							
+							lbu		t1,	0(a4)			# Pegamos a primeira word do bitmap do objeto
+							sb		t1,	0(t0)			# Desenhamos na tela
+	drawObject.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte
+							addi		t0,	t0,	1		# Próximo endereço de pintura
+							addi		a6,	a6,	-1		# j--
+							j		drawObject.drawLine
+	
+	drawObject.drawLine.end:		addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
+						addi		a2,	a2,	-1			# height--
+						j		drawObject.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
+						
+	drawObject.finish:		ret	
+						
+############################
+# ROM Tables
+############################
+
+.data
+.align 2
+testObjY: .word 118
+testObj: .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
+
+
 
 #######################
 # Includes
