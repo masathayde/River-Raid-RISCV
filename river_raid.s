@@ -20,6 +20,10 @@
 
 	framePtr: .word 0
 	
+	
+	gameLevel: .byte 0										# Dificuldade
+	
+	
 	frameToShow: .byte 1
 	scrollSpeed: .byte 9
 
@@ -37,11 +41,14 @@
 	
 	.align 2
 		
-	objectList: .space 256										# Somente 6 objetos por tela
+	objectPtrList: .space 24										# Somente 6 objetos por tela
+	
+	object0: .space 50
 	# objectType: .byte
 	# objectState: .byte			
 	# objectXpos: .byte
 	# objectYpos: .byte
+	# objectXspeed: .byte
 	# objectHeight: .byte
 	# objectWidth: .byte
 	# objectDirection: .byte
@@ -410,6 +417,8 @@ renderPlayfield:			li		t0,	0					# i = 0
 # a3: Largura do objeto
 # a4: Endereço do bitmap do objeto
 # a5: Endereço do VGA
+# a6: Desenhar invertido (1 ou 0)
+# TODO : FAZER FLIP
 ############################
 
 drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visível
@@ -431,9 +440,10 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 							li		t5,	160
 							bgtu		a1,	t5,	drawObject.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
 							
-							lbu		t1,	0(a4)			# Pegamos a primeira word do bitmap do objeto
+							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
 							sb		t1,	0(t0)			# Desenhamos na tela
 	drawObject.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte
+	
 							addi		t0,	t0,	1		# Próximo endereço de pintura
 							addi		a6,	a6,	-1		# j--
 							j		drawObject.drawLine
@@ -442,15 +452,40 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 						addi		a2,	a2,	-1			# height--
 						j		drawObject.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
 						
-	drawObject.finish:		ret	
-						
+	drawObject.finish:		ret
+	
+			
+#############################
+# Gera um novo objeto				
+# a0: Endereço onde será salvo o objeto
+# a1: Offset Y ( quantidade de linhas do bloco que já foram desenhadas)
+# a2: ID do bloco
+
+# a5: Endereço do Table com os endereços das "formas" dos objetos
+############################			
+
+# Vamos fazer assim:
+# 1) Rotina para decisão de qual objeto será criado				
+# Nessa rotina, decidimos se:
+# a) Vamos criar Fuel ou não, baseado na dificuldade.
+# b) Se não for Fuel, decidimos se é casa ou não, baseado na dificuldade
+# c) Decidir qual inimigo colocar
+# d) Decidir coordenada x ( + um offset ) onde colocar o objeto
+# e) Decidir direção
+
+# Possíveis argumentos
+# - Endereço de um Table que salva ponteiros para a seção de cada objeto (na qual estão seus atributos)
+# - Tamanho de um objeto, em bytes. Deve ser padrão
+# 
+
+																																		
 ############################
 # ROM Tables
 ############################
 
 .data
 .align 2
-testObjY: .word 118
+testObjY: .word -80
 testObj: .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
 	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
 	 .byte 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0, 0xe0
