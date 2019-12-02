@@ -1,0 +1,63 @@
+River Raid Todo List
+
+- URGENTE: Diminuir largura do sprite do jogador
+
+- Colocar ponte no .data
+x Definir variável de dificuldade
+- Fazer com que uma ponte seja gerada a cada 16 blocos
+- Geração de blocos levando a dificuldade em consideração
+
+- Adicionar transparência na rotina drawObject
+
+- Fazer rotina de geração de objetos, levando em consideração a dificuldade
+  - Primeiro decide se é combústivel ou inimigo
+    - Depois, decide qual inimigo
+- Fazer desenho inicial padrão do mapa
+
+x Adicionar variáveis de vidas, combústivel e score
+- Adicionar variável de perda de combústivel por ciclo
+- Adicionar variável de número máximo de tiros
+- Adicionar vetor de tiros
+- Adicionar rotina de colisão de tiros
+
+- Desenhar player na tela (juntar com rotina de checagem de colisão)
+- Quantos tipos de colisão? (4)
+  - Checar se é rio ou explosão. Se for, não fazer nada.
+    - Se não for, checar se é combústivel
+      - Se não for, checar se é bad fuel
+        - Se não for, então é destruição
+- Fazer uma pequena rotina de teste de colisão
+
+- Fazer movimentação do jogador
+  - Rotina de tratamento de input
+
+- Fazer rotina de tratamento de colisão do player
+- Em caso de destruição, chamar rotina de animação especial
+  - Produzir objeto som
+    - Objeto som tem: sequência de notas, tempo de cada nota, tempo total, prioridade 
+
+
+
+- Fazer animação dos objetos (só o helicóptero tem até agora)
+- Fazer movimentação
+- Adicionar função de colisão à rotina drawObject
+- Fazer rotina de tratamento de colisão de objetos
+  - Se for terra, trocar de direção (usar um pixel mais na ponta + velocidade X, ver se é terra)
+    - Se for míssel, trocar por um objeto explosão
+
+
+- Fazer rotina de reprodução de som
+  - Variável de quanto tempo ainda falta para acabar a nota
+    - Quando chega ao valor, passa para a próxima nota
+  - Variável de quanto tempo ainda falta para acabar o som todo
+
+
+- Fazer setup inicial
+- Fazer subrotina de game over
+
+> Definir ordem de execução das rotinas
+  - Tratamento de colisão
+  - Movimento dos objetos
+  - Movimento do jogador
+  - Pintura
+    - Pintura do jogador por último

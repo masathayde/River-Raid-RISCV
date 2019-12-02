@@ -4,6 +4,7 @@
 .eqv SCORE_COLOR_4 0x0b0b0b0b
 .eqv FUEL_COLOR 0x00 											# Cor do combustível
 
+# As cores são essenciais para os testes de colisão
 .eqv BANK_COLOR 0x10
 .eqv RVCL 0xb0 # river color
 .eqv SCORE_COLOR 0x0b
@@ -14,9 +15,16 @@
 .eqv HOUS 0xFF # house color
 .eqv TRNK 0xFF # tree trunk color
 .eqv TREE 0xFF # tree leaves color
+.eqv EXPL 0xFF # explosion color
 .eqv PLYR 0xFF # Player color
 
-.eqv MAX_BANK_SIZE 7											
+.eqv MAX_BANK_SIZE 7
+.eqv MAX_DIFFICULTY 10											
+.eqv PLAYER_MAX_MISSILE 20   # Número máximo de tiros na tela
+.eqv PLAYER_MISSILE DELAY 15 # Quanto tempo deve-se esperar para poder atirar de novo (em ciclos)
+.eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
+.eqv PLAYER_HEIGHT 20 # Medidas do sprite, em pixels
+.eqv PLAYER_WIDTH 20 
 
 .eqv TIMESTEP 40											# Em ms
 
@@ -29,22 +37,47 @@
 .data
 	# Tentar agrupar todos os words no começo para não precisar usar .align
 	gameTime: .word 0
-
 	framePtr: .word 0
-	
-	
+	HiScore: .word 0
 	gameLevel: .byte 0										# Dificuldade
 	
 	
-	frameToShow: .byte 1
-	scrollSpeed: .byte 4
+	frameToShow: .byte 1 # Frame do VGA selecionado										
+	scrollSpeed: .byte 4 # Velocidade de scroll vertical
 
 	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
 	
 	lineDrawnCounter: .byte 0									# Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
-	
+
+######################################################################################################################	
+#  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ______ _____     ___  _____ _____   ___ ______ ___________ 
+# | | | |/ _ \ | ___ \_   _|/ _ \| | | |  ___|_   _/  ___| |  _  \  _  |   |_  ||  _  |  __ \ / _ \|  _  \  _  | ___ \
+# | | | / /_\ \| |_/ / | | / /_\ \ | | | |__   | | \ `--.  | | | | | | |     | || | | | |  \// /_\ \ | | | | | | |_/ /
+# | | | |  _  ||    /  | | |  _  | | | |  __|  | |  `--. \ | | | | | | |     | || | | | | __ |  _  | | | | | | |    / 
+# \ \_/ / | | || |\ \ _| |_| | | \ \_/ / |___ _| |_/\__/ / | |/ /\ \_/ / /\__/ /\ \_/ / |_\ \| | | | |/ /\ \_/ / |\ \ 
+#  \___/\_| |_/\_| \_|\___/\_| |_/\___/\____/ \___/\____/  |___/  \___/  \____/  \___/ \____/\_| |_/___/  \___/\_| \_|
+#######################################################################################################################
+	.align 2
+	playerCrrSpr: .word 0 # Endereço do sprite atual do avião
+	playerScore: .word 0 # Pontuação atual
+	playerLives: .byte 4
+	playerPosX: .byte 120
+	playerPosY: .byte 155 # Normalmente, não deve mudar
+	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
+	playerFuel: .byte 10
+	playerMissile: .byte 0 # Contador de tiros
+	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
+                                                                                                      
+##########################################################                                                                                                                                                                                                                
+# ______ _       _____   _______ _____ _____ _    ______ 
+# | ___ \ |     / _ \ \ / /  ___|_   _|  ___| |   |  _  \
+# | |_/ / |    / /_\ \ V /| |_    | | | |__ | |   | | | |
+# |  __/| |    |  _  |\ / |  _|   | | |  __|| |   | | | |
+# | |   | |____| | | || | | |    _| |_| |___| |___| |/ / 
+# \_|   \_____/\_| |_/\_/ \_|    \___/\____/\_____/___/  
+##########################################################                                                                                                               		
 	pfWriteOffset: .byte 0
 	pfReadStartOffset: .byte 160
 	pfReadEndOffset: .byte 0
@@ -52,10 +85,9 @@
 	
 	
 	.align 2
-		
 	objectPtrList: .space 24										# Somente 6 objetos por tela
 	
-	object0: .space 50
+	object0: .space 32
 	# objectBitmapPtr: .word
 	# objectAction: .word
 	# objectType: .byte
@@ -68,6 +100,12 @@
 	# objectDirection: .byte
 	# objectAnimationCounter: .byte
 	# objectIsAnim: .byte
+	# objectCollsion: .byte
+	object1: .space 32
+	object2: .space 32
+	object3: .space 32
+	object4: .space 32
+	object5: .space 32
 	
 .text
 
@@ -79,8 +117,28 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
  					csrrw 		zero,5,tp 		# seta utvec (reg 5) para o endereço tp
  					csrrsi 		zero,0,1 		# seta o bit de habilitação de interrupção em ustatus (reg 0)
 
-	# Preparamos tudo que for necessário para começar o jogo.
-	InitSetup:
+# .d8888b.  8888888888 88888888888 888     888 8888888b.       8888888 888b    888 8888888 .d8888b. 8888888        d8888 888      
+# d88P  Y88b 888            888     888     888 888   Y88b        888   8888b   888   888  d88P  Y88b  888         d88888 888      
+# Y88b.      888            888     888     888 888    888        888   88888b  888   888  888    888  888        d88P888 888      
+#  "Y888b.   8888888        888     888     888 888   d88P        888   888Y88b 888   888  888         888       d88P 888 888      
+#     "Y88b. 888            888     888     888 8888888P"         888   888 Y88b888   888  888         888      d88P  888 888      
+#       "888 888            888     888     888 888               888   888  Y88888   888  888    888  888     d88P   888 888      
+# Y88b  d88P 888            888     Y88b. .d88P 888               888   888   Y8888   888  Y88b  d88P  888    d8888888888 888      
+#  "Y8888P"  8888888888     888      "Y88888P"  888             8888888 888    Y888 8888888 "Y8888P" 8888888 d88P     888 88888888 
+
+	InitSetup:			
+#	   ___  _____ _____   ___ ______ ___________ 
+#	  |_  ||  _  |  __ \ / _ \|  _  \  _  | ___ \
+#	    | || | | | |  \// /_\ \ | | | | | | |_/ /
+#	    | || | | | | __ |  _  | | | | | | |    / 
+#	/\__/ /\ \_/ / |_\ \| | | | |/ /\ \_/ / |\ \ 
+#	\____/  \___/ \____/\_| |_/___/  \___/\_| \_|
+#	
+#	Resetando todos os dados					
+					la		t0,	playerCrrSpr				
+					la		t1,	Plyr_0					# Sprite do jogador padrão
+					sw		t1,	0(t0)					# Salvando no espaço correto
+
 
 					li		s0,	6					# i = 6
 	InitSetup.genMap:		beq		s0,	zero,	InitSetup.genMap.end		# (while i > 0)
@@ -195,7 +253,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #    888     888           "Y88b.    888     888        
 #    888     888             "888    888     888        
 #    888     888       Y88b  d88P    888     888        
-#    888     8888888888 "Y8888P"     888     8888888888 
+#    888     8888888888 "Y8888P"     888     8888888888  Fonte: colossal
                                                        
                                                                                                          				
 						la		t0, testObjY
@@ -214,7 +272,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lw		a5, 0(t0)
 						li		a6, 0
 						call	drawObject
-						
 	
 						li		a0, 10
 						la		t0, testObjY
@@ -228,14 +285,56 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						li		a6, 1
 						call	drawObject
 						
-						# Troca de frame	
+# ______      _   _                       _           ___                       _            
+# | ___ \    | | (_)                     | |         |_  |                     | |           
+# | |_/ /___ | |_ _ _ __   __ _ ___    __| | ___       | | ___   __ _  __ _  __| | ___  _ __ 
+# |    // _ \| __| | '_ \ / _` / __|  / _` |/ _ \      | |/ _ \ / _` |/ _` |/ _` |/ _ \| '__|
+# | |\ \ (_) | |_| | | | | (_| \__ \ | (_| | (_) | /\__/ / (_) | (_| | (_| | (_| | (_) | |   
+# \_| \_\___/ \__|_|_| |_|\__,_|___/  \__,_|\___/  \____/ \___/ \__, |\__,_|\__,_|\___/|_|   
+#                                                                __/ |                       
+#                                                               |___/                        
+
+	# Desenho e colisão
+						la		t0,	playerPosX			# Carregando X do jogador
+						lbu		a0,	0(t0)
+						la		t0,	playerPosY			# Carregando Y do jogador
+						lbu		a1,	0(t0)
+						li		a2,	PLAYER_HEIGHT			# Carregando altura do sprite
+						li		a3,	PLAYER_WIDTH			# Carregando largura
+						la		t0,	playerCrrSpr
+						lw		a4,	0(t0)				# Pegando bitmap atual (normal ou virando para um lado)
+						la		t0, 	framePtr			# Pegando endereço do VGA atual
+						lw		a5, 	0(t0)
+						la		t0,	playerDirection			# Carregando direção
+						lbu		a6,	0(t0)
+						la		a7,	playerCollision			# Endereço onde será salvo o byte de colisão
+						call		drawPlayerChkC												
+																		
+
+#  _____                         _       ______                        
+# |_   _|                       | |      |  ___|                       
+#   | |_ __ ___   ___ __ _    __| | ___  | |_ _ __ __ _ _ __ ___   ___ 
+#   | | '__/ _ \ / __/ _` |  / _` |/ _ \ |  _| '__/ _` | '_ ` _ \ / _ \
+#   | | | | (_) | (_| (_| | | (_| |  __/ | | | | | (_| | | | | | |  __/
+#   \_/_|  \___/ \___\__,_|  \__,_|\___| \_| |_|  \__,_|_| |_| |_|\___|
+                                                                     
+                                                                      
+	
 						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
 						lbu		t1,	0(t0)
 						li		t0,	VGAFRAMESELECT
 						sb		t1,	0(t0)
 						
-	
-						# Cálculo de sleep time
+
+#  _____       _            _             _        _____ _                   _____ _                
+# /  __ \     | |          | |           | |      /  ___| |                 |_   _(_)               
+# | /  \/ __ _| | ___ _   _| | ___     __| | ___  \ `--.| | ___  ___ _ __     | |  _ _ __ ___   ___ 
+# | |    / _` | |/ __| | | | |/ _ \   / _` |/ _ \  `--. \ |/ _ \/ _ \ '_ \    | | | | '_ ` _ \ / _ \
+# | \__/\ (_| | | (__| |_| | | (_) | | (_| |  __/ /\__/ / |  __/  __/ |_) |   | | | | | | | | |  __/
+#  \____/\__,_|_|\___|\__,_|_|\___/   \__,_|\___| \____/|_|\___|\___| .__/    \_/ |_|_| |_| |_|\___|
+#                                                                   | |                             
+#                                                                   |_|                             
+
 	Wait:					nop
 						la		t0,	gameTime			# Recuperamos o tempo salvo no começo do ciclo
 						lw		t1,	0(t0)
@@ -512,6 +611,106 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 						
 	drawObject.finish:		ret
 	
+#############################
+# Desenha o jogador na tela				
+# a0: Coordenada X
+# a1: Coordenada Y
+# a2: Altura do jogador
+# a3: Largura do jogador
+# a4: Endereço do bitmap do jogador
+# a5: Endereço do VGA
+# a6: Desenhar invertido (1 ou 0)
+# a7: Endereço da variável de colisão
+############################
+# Uma cópia da rotina drawObject, com modificações
+# Por exemplo, não há checagem de visibilidade, porque, a princípio, o jogador está sempre visível
+# Draw player and Check collision
+# Usa .eqv definidos fora da função
+drawPlayerChkC:				addi		sp,	sp,	-4
+					sw		s0,	0(sp)			
+
+	drawPlayerChkC.start:		beq		a2,	zero,	drawPlayerChkC.finish				# while (height > 0 )
+						
+						# Calculando o endereço no VGA
+						li		t0,	320
+						mul		t0,	a1,	t0				# Y*320
+						add		t0,	t0,	a0				# t0 = Y*320 + X
+						add		t0,	t0,	a5				# VGAStart + t0 é o endereço		
+						
+						mv		t6,	a3					# t6 = j = largura do objeto
+						beq		a6,	zero, drawPlayerChkC.drawLine		# Se for para inverter o sprite, executamos as próximas instruções
+						add		a4,	a4,	a3				# Pegamos o endereço do final da linha
+						addi		a4,	a4,	-1
+						j		drawPlayerChkC.drawLineF			# Pulamos para o loop de desenho invertido de linha					
+	drawPlayerChkC.drawLine:		beq		t6,	zero,	drawPlayerChkC.drawLine.end 	# while (j > 0 )
+							
+							# CHECAGEM DE COLISÃO	
+							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
+							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
+							beq		t1,	t5,	drawPlayerChkC.noColl 	# Assim, ignoramos o teste de colisão
+							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
+							beq		t4,	t5,	drawPlayerChkC.noColl 	# Se é rio, não fazemos nada
+							li		t5,	EXPL
+							beq		t4,	t5,	drawPlayerChkC.noColl 	# Se for explosão, também não fazemos nada
+							li		t5,	FUEL
+							bne		t4,	t5,	drawPlayerChkC.chkLeuf 	# Checamos se é combústivel
+							li		s0,	2				# Guardamos o tipo de colisão em s0
+							j		drawPlayerChkC.noColl			# Procedendo ao desenho
+	drawPlayerChkC.chkLeuf:				li		t5,	LEUF
+							bne		t4,	t5,	drawPlayerChkC.boom	# Checamos se é combústivel ruim
+							li		s0,	3				# Guardamos em s0
+							j		drawPlayerChkC.noColl			# Procedendo ao desenho
+	drawPlayerChkC.boom:				li		s0,	1				# Se não for nenhuma dos casos anteriores, então é colisão fatal
+							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo						
+															
+	drawPlayerChkC.noColl:				sb		t1,	0(t0)				# Desenhamos na tela
+							addi		a4,	a4,	1			# Passamos para o próximo byte
+	
+							addi		t0,	t0,	1			# Próximo endereço de pintura
+							addi		t6,	t6,	-1			# j--
+							j		drawPlayerChkC.drawLine
+							
+	
+	drawPlayerChkC.drawLineF:		beq		t6,	zero,	drawPlayerChkC.drawLineF.end # while (j > 0 )
+							
+							# CHECAGEM DE COLISÃO	
+							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
+							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
+							beq		t1,	t5,	drawPlayerChkC.noCollF 	# Assim, ignoramos o teste de colisão
+							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
+							beq		t4,	t5,	drawPlayerChkC.noCollF 	# Se é rio, não fazemos nada
+							li		t5,	EXPL
+							beq		t4,	t5,	drawPlayerChkC.noCollF 	# Se for explosão, também não fazemos nada
+							li		t5,	FUEL
+							bne		t4,	t5,	drawPlayerChkC.chkLeufF # Checamos se é combústivel
+							li		s0,	2				# Guardamos o tipo de colisão em s0
+							j		drawPlayerChkC.noCollF			# Procedendo ao desenho
+	drawPlayerChkC.chkLeufF:			li		t5,	LEUF
+							bne		t4,	t5,	drawPlayerChkC.boomF	# Checamos se é combústivel ruim
+							li		s0,	3				# Guardamos em s0
+							j		drawPlayerChkC.noCollF			# Procedendo ao desenho
+	drawPlayerChkC.boomF:				li		s0,	1				# Se não for nenhuma dos casos anteriores, então é colisão fatal
+							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo
+							
+	drawPlayerChkC.noCollF:				sb		t1,	0(t0)			# Desenhamos na tela
+							addi		a4,	a4,	-1		# Passamos para o próximo byte
+	
+							addi		t0,	t0,	1		# Próximo endereço de pintura
+							addi		t6,	t6,	-1		# j--
+							j		drawPlayerChkC.drawLineF						
+																			
+	
+	drawPlayerChkC.drawLineF.end:		add		a4,	a4,	a3			# Ajustando o endereço do bitmap, após desenho de linha invertido
+						addi		a4,	a4,	1
+	drawPlayerChkC.drawLine.end:		addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
+						addi		a2,	a2,	-1			# height--
+						j		drawPlayerChkC.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
+						
+	drawPlayerChkC.finish:		sb		s0,	0(a7)					# Salvamos o tipo de colisão no endereço
+					lw		s0,	0(sp)
+					addi		sp,	sp,	4
+					ret
+	
 			
 #############################
 # Gera um novo objeto				
@@ -713,22 +912,22 @@ Plyr_0:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #5
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR
-         .byte PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR
-         .byte PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR
-         .byte RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL #10X
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL 
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #13 
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #15
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #20
          
 Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
