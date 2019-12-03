@@ -5,7 +5,7 @@ x Definir variável de dificuldade
 - Fazer com que uma ponte seja gerada a cada 16 blocos
 - Geração de blocos levando a dificuldade em consideração
 
-- Adicionar transparência na rotina drawObject
+x Adicionar transparência na rotina drawObject
 
 - Fazer rotina de geração de objetos, levando em consideração a dificuldade
   - Primeiro decide se é combústivel ou inimigo

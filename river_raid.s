@@ -49,7 +49,7 @@
 	framePtr: .word 0
 	HiScore: .word 0
 	gameLevel: .byte 0										# Dificuldade
-	
+	maxLevel: .byte 3										# Dificuldade máxima
 	
 	frameToShow: .byte 1 # Frame do VGA selecionado										
 	scrollSpeed: .byte 2 # Velocidade de scroll vertical atual
@@ -256,7 +256,12 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		t1,	t1,	32
 						li		t2,	192
 						remu		t1,	t1,	t2			# Wraparound
-						sb		t1,	0(t0)						
+						sb		t1,	0(t0)
+						
+						#### EXPERIMENTO
+						
+						
+																		
 	NoNewBlock:				nop
 						
 						
@@ -309,7 +314,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #                                                               |___/                        
 
 	#### RECEBIMENTO DE INPUT ####
-	# TESTE #
 						li		a0,	0xFF200000
 						li		a1,	0xFF200004
 						la		t0,	playerSpeedX
@@ -323,6 +327,27 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t1,	scrollSpeed
 						sw		t1,	0(t0)
 						call		getInputRars
+						
+						
+						li		a0,	0xFF200200
+						lw		s7, 0(a0) #debug
+						li		a1,	0xFF200204
+						lw		s8, 0(a1) # debug
+						#ebreak #debug
+						la		t0,	playerSpeedX
+						lbu		a2,	0(t0)
+						la		a3,	playerPosX
+						la		a4,	playerDirection
+						la		a5,	Plyr_0
+						la		a6,	Plyr_1
+						la		a7,	playerCrrSpr
+						la		t0,	Arg8
+						la		t1,	scrollSpeed
+						sw		t1,	0(t0)
+						la		t0, Arg9
+						li		t1,	0xFF20021C
+						sw		t1, 0(t0)
+						#call		getInputStick
 						
 						
 
@@ -837,9 +862,10 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					sb		t4,	0(t2)					# Caso nada mude, sempre voltamos à velocidade padrão
 
 					lw		t0,	0(a0)					# Pegamos o valor do eixo X
-					# Talvez incluir teste para ver se o stick está no meio e pular todas as instruções?
+					lw		t1, 0(a1)					# Pegamos o valor do eixo Y
 					
-					li		t1,	200					# Valor do deadzone em direção a zero
+					
+					li		t1,	400					# Valor do deadzone em direção a zero
 					bge		t0,	t1,	getInputStick.testXp		# Se for maior, o jogador não está indo nessa direção
 					# Vamos presumir que é a direita
 					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
@@ -850,7 +876,7 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					sw		a6,	0(a7)					# Atualizamos o sprite
 					j		getInputStick.testYm
 					
-	getInputStick.testXp:		li		t1,	823					# Valor do deadzone em direção a 1023	
+	getInputStick.testXp:		li		t1,	3695					# Valor do deadzone em direção a 1023	
 					ble		t0,	t1,	getInputStick.testYm		# Se for menor, o jogador não está indo nessa direção
 					# Vamos presumir esquerda
 					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
@@ -863,7 +889,7 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					sw		a6,	0(a7)					# Atualizamos o sprite
 					
 	getInputStick.testYm:		lw		t0,	0(a1)					# Pegamos o valor do eixo Y
-					li		t1,	200					# Valor do deadzone em direção a zero
+					li		t1,	400					# Valor do deadzone em direção a zero
 					bge		t0,	t1,	getInputStick.testYp		# Se for maior, não está indo nessa direção
 					# Vamos presumir que é baixo
 					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
@@ -874,7 +900,7 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					sw		a5,	0(a7)					# Usa o sprite padrão
 					j		getInputStick.testButton
 	
-	getInputStick.testYp:		li		t1,	823					# Deadzone em direção a 1023
+	getInputStick.testYp:		li		t1,	3695					# Deadzone em direção a 1023
 					ble		t0,	t1,	getInputStick.testButton	# Se for menor, não está indo nessa direção
 					la		t1,	scrollSpeedFast				# Pegamos o valor da velocidade no nível devagar
 					lbu		t2,	0(t1)
@@ -913,6 +939,45 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 # - Endereço de um Table que salva ponteiros para a seção de cada objeto (na qual estão seus atributos)
 # - Tamanho de um objeto, em bytes. Deve ser padrão
 # 
+
+#############################
+# Decide a coordenada X do objeto baseado no ID do bloco
+# Entradas:			
+# a0: ID do bloco
+# a1: Largura do objeto
+# Saídas:
+# a0: Coordenada X escolhida
+############################
+
+placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
+					li		t1,	0x0000000f				# Bitmask para isolar o valor do rio
+					and		t2,	a0,	t1				# Isolando valor do rio
+					
+					li		a7,	41
+					ecall								# Gerando o número aleatório
+					addi		t2,	t2,	1				# Queremos um número entre 0 e n (número de blocos de rio)
+					remu		t3,	a0,	t2				# Operação mod para que seja um número entre os blocos de rio
+					add		t3,	t3,	t0				# Temos o bloco "x" escolhido
+					li		a7,	41
+					ecall								# Outro número aleatório para decidir qual lado da tela
+					li		t2,	2
+					remu		t2,	a0,	t2				# b = 0 ou 1
+					
+					# Fórmula da coordenada final
+					# X = [13*b + (-2*b + 1)*x]*20 + 20
+					# t3 = x, t2 = b
+					li		t0,	-2					# -2
+					mul		t0,	t0,	t2				# -2*b
+					addi		t0,	t0,	1				# -2*b + 1
+					mul		t0,	t0,	t3				# (-2*b + 1)*x
+					li		t1,	13
+					mul		t1,	t1,	t2				# 13*b
+					add		t0,	t0,	t1				# [13*b + (-2*b + 1)*x]
+					li		t4,	20
+					mul		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20
+					add		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20 + 20
+					mv		a0,	t0					# Colocamos em a0 para retornar
+					ret
 
 																																		
 ##############################################################################################
@@ -1144,6 +1209,23 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #20
                  
+########################
+# Tabela de dificuldade
+# Byte 00: Quantidade de blocos máxima de terra, partindo da ponta
+# Byte 01: Quantidade de blocos mínima de rio
+# Byte 02: Largura mínima de abertura
+# Byte 03: Probabilidade de gerar combústivel (1/x) (Na rotina, se o número aleatório Mod x == 0, é fuel)
+# Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
+# Offset: 5
+Difficulty: 	.byte 0, 7, 2, 4, 2 # Dificuldade 0
+	  	.byte 2, 5, 2, 4, 2 # Dificuldade 1
+	  	.byte 4, 3, 2, 6, 3 # Dificuldade 2
+	  	.byte 5, 2, 2, 7, 4 # Dificuldade 3
+	  	
+	  	
+	  	.byte 6, 1, 1, 12,4 # Doomguy_shocked.png
+
+
 
 #######################
 # Includes
