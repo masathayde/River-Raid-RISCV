@@ -4,7 +4,7 @@
 .eqv SCORE_COLOR_4 0x0b0b0b0b
 .eqv FUEL_COLOR 0x00 											# Cor do combustível
 
-# As cores são essenciais para os testes de colisão
+# As cores são essenciais para os testes de colisão e precisam ser diferentes
 .eqv BANK_COLOR 0x10
 .eqv RVCL 0xb0 # river color
 .eqv SCORE_COLOR 0x0b
@@ -15,8 +15,14 @@
 .eqv HOUS 0xFF # house color
 .eqv TRNK 0xFF # tree trunk color
 .eqv TREE 0xFF # tree leaves color
+.eqv BRDG 0x00 # bridge color
 .eqv EXPL 0xFF # explosion color
 .eqv PLYR 0xFF # Player color
+
+.eqv M_LEFT 97 # a
+.eqv M_RIGHT 100 # d
+.eqv M_UP 119 # w
+.eqv M_DOWN 115 # s
 
 .eqv MAX_BANK_SIZE 7
 .eqv MAX_DIFFICULTY 10											
@@ -26,7 +32,7 @@
 .eqv PLAYER_HEIGHT 20 # Medidas do sprite, em pixels
 .eqv PLAYER_WIDTH 20 
 
-.eqv TIMESTEP 40											# Em ms
+.eqv TIMESTEP 33											# Em ms
 
 .eqv VGAADDRESSINI0     0xFF000000
 .eqv VGAADDRESSFIM0     0xFF012C00
@@ -36,6 +42,9 @@
 
 .data
 	# Tentar agrupar todos os words no começo para não precisar usar .align
+	Arg8: .word 0 # Caso seja necessário mais de 7 argumentos
+	Arg9: .word 0 # Pois é
+	
 	gameTime: .word 0
 	framePtr: .word 0
 	HiScore: .word 0
@@ -43,7 +52,11 @@
 	
 	
 	frameToShow: .byte 1 # Frame do VGA selecionado										
-	scrollSpeed: .byte 4 # Velocidade de scroll vertical
+	scrollSpeed: .byte 2 # Velocidade de scroll vertical atual
+	
+	scrollSpeedNormal: .byte 2 # Velocidade de scroll vertical padrão
+	scrollSpeedFast: .byte 4 # Velocidade de scroll vertical rápida
+	scrollSpeedSlow: .byte 1 # Velocidade devagar
 
 	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
@@ -62,13 +75,14 @@
 	.align 2
 	playerCrrSpr: .word 0 # Endereço do sprite atual do avião
 	playerScore: .word 0 # Pontuação atual
+	playerPosX: .half 120
 	playerLives: .byte 4
-	playerPosX: .byte 120
 	playerPosY: .byte 155 # Normalmente, não deve mudar
 	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
 	playerFuel: .byte 10
 	playerMissile: .byte 0 # Contador de tiros
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
+	playerSpeedX: .byte 4 # Velocidade em pixels/frame
                                                                                                       
 ##########################################################                                                                                                                                                                                                                
 # ______ _       _____   _______ _____ _____ _    ______ 
@@ -92,7 +106,7 @@
 	# objectAction: .word
 	# objectType: .byte
 	# objectState: .byte			
-	# objectXpos: .byte
+	# objectXpos: .half
 	# objectYpos: .byte
 	# objectXspeed: .byte
 	# objectHeight: .byte
@@ -258,7 +272,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
                                                                                                          				
 						la		t0, testObjY
 						lw		t1, 0(t0)
-						addi		t1,	t1,	4
+						addi		t1, t1,	4
 						sw		t1, 0(t0)
 	
 						li		a0, 120
@@ -294,9 +308,27 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #                                                                __/ |                       
 #                                                               |___/                        
 
-	# Desenho e colisão
+	#### RECEBIMENTO DE INPUT ####
+	# TESTE #
+						li		a0,	0xFF200000
+						li		a1,	0xFF200004
+						la		t0,	playerSpeedX
+						lbu		a2,	0(t0)
+						la		a3,	playerPosX
+						la		a4,	playerDirection
+						la		a5,	Plyr_0
+						la		a6,	Plyr_1
+						la		a7,	playerCrrSpr
+						la		t0,	Arg8
+						la		t1,	scrollSpeed
+						sw		t1,	0(t0)
+						call		getInputRars
+						
+						
+
+	#### DESENHO E COLISÃO ####
 						la		t0,	playerPosX			# Carregando X do jogador
-						lbu		a0,	0(t0)
+						lhu		a0,	0(t0)
 						la		t0,	playerPosY			# Carregando Y do jogador
 						lbu		a1,	0(t0)
 						li		a2,	PLAYER_HEIGHT			# Carregando altura do sprite
@@ -553,7 +585,6 @@ renderPlayfield:			li		t0,	0					# i = 0
 # a4: Endereço do bitmap do objeto
 # a5: Endereço do VGA
 # a6: Desenhar invertido (1 ou 0)
-# TODO : FAZER FLIP
 # TODO: Hit detection
 ############################
 
@@ -710,7 +741,151 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 					lw		s0,	0(sp)
 					addi		sp,	sp,	4
 					ret
+
 	
+#############################################
+# Recebimento de input (RARS)
+# a0: Endereço do controle do KB
+# a1: Endereço do dado do KB
+# a2: Valor da velocidade X
+# a3: Endereço da PosX
+# a4: Endereço da direção
+# a5: Endereço do sprite padrão dp jogador
+# a6: Endereço do sprite de virada do jogador
+# a7: Endereço do espaço no qual é salvo o endereço do sprite atual
+# Arg8: Endereço da velocidade de scroll da tela
+#############################################
+getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
+					andi		t0,	t0,	1				# Aplicando bitmask
+					beq		t0,	zero,	getInputRars.noMove		# Se t0 == 0, não há input novo
+					lw		t0,	0(a1)					# Há input novo, então o guardamos
+					
+					# Switch case
+					li		t1,	M_LEFT
+					bne		t0,	t1,	getInputRars.testRight		# Testamos se é a direção esquerda
+					lhu		t2,	0(a3)					# Pegamos a posição X
+					li		t1,	-1
+					mul		t1,	t1,	a2				# Esquerda significa reduzir a coordenada X, então invertemos a velocidade
+					add		t2,	t2,	t1				# Atualizamos a posição X
+					sh		t2,	0(a3)					# Guardamos no endereço certo
+					li		t1,	1					# 1 = esquerda
+					sb		t1,	0(a4)					# Atualizamos a direção
+					sw		a6,	0(a7)					# Atualizamos o sprite
+					j		getInputRars.end				
+					
+	getInputRars.testRight:		li		t1,	M_RIGHT
+					bne		t0,	t1,	getInputRars.testUp		# Testamos se é a direção direita
+					lhu		t2,	0(a3)					# Pegamos a posição X
+					add		t2,	t2,	a2				# Atualizamos a posição
+					sh		t2,	0(a3)					# Guardamos no endereço certo
+					li		t1,	0					# 0 = direita
+					sb		t1,	0(a4)					# Atualizamos a direção
+					sw		a6,	0(a7)					# Atualizamos o sprite
+					j		getInputRars.end
+					
+	getInputRars.testUp:		li		t1,	M_UP
+					bne		t0,	t1,	getInputRars.testDown		# Testamos se é cima
+					la		t1,	scrollSpeedFast				# Pegamos o valor da velocidade no nível devagar
+					lbu		t2,	0(t1)
+					la		t1,	Arg8
+					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
+					sb		t2,	0(t3)					# Atualizamos a velocidade
+					sw		a5,	0(a7)
+					j		getInputRars.end
+					
+	getInputRars.testDown:		li		t1,	M_DOWN
+					bne		t0,	t1,	getInputRars.noMove		# Testamos se é baixo
+					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
+					lbu		t2,	0(t1)
+					la		t1,	Arg8					# Pegamos o endereço onde está a velocidade de scroll da tela
+					lw		t3,	0(t1)					#
+					sb		t2,	0(t3)					# Atualizamos a velocidade
+					sw		a5,	0(a7)
+					j		getInputRars.end
+					
+	getInputRars.noMove:		sw		a5,	0(a7)					# Como não houve movimento, o sprite padrão é usado
+					la		t1,	Arg8					# Pegamos o endereço..
+					lw		t2,	0(t1)					# ..do scroll vertical
+					la		t3,	scrollSpeedNormal			# Pegamos o valor da velocidade padrão
+					lbu		t4, 	0(t3)					# 
+					sb		t4,	0(t2)					# Atualizamos (Isso é feito se não houver nenhum input novo)
+
+	getInputRars.end:		ret
+	
+#############################################
+# Recebimento de input (De1)
+# a0: Endereço do eixo X
+# a1: Endereço do eixo Y
+# a2: Valor da velocidade X
+# a3: Endereço da PosX
+# a4: Endereço da direção
+# a5: Endereço do sprite padrão dp jogador
+# a6: Endereço do sprite de virada do jogador
+# a7: Endereço do espaço no qual é salvo o endereço do sprite atual
+# Arg8: Endereço da velocidade de scroll da tela
+# Arg9: Endereço do sinal do botão do stick
+#############################################
+getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mudado se houver movimento
+					la		t1,	Arg8					# Pegamos o endereço..
+					lw		t2,	0(t1)					# ..do scroll vertical
+					la		t3,	scrollSpeedNormal			# Pegamos o valor da velocidade padrão
+					lbu		t4, 	0(t3)					# 
+					sb		t4,	0(t2)					# Caso nada mude, sempre voltamos à velocidade padrão
+
+					lw		t0,	0(a0)					# Pegamos o valor do eixo X
+					# Talvez incluir teste para ver se o stick está no meio e pular todas as instruções?
+					
+					li		t1,	200					# Valor do deadzone em direção a zero
+					bge		t0,	t1,	getInputStick.testXp		# Se for maior, o jogador não está indo nessa direção
+					# Vamos presumir que é a direita
+					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
+					add		t2,	t2,	a2				# Atualizamos a posição
+					sh		t2,	0(a3)					# Guardamos no endereço certo
+					li		t1,	0					# 0 = direita
+					sb		t1,	0(a4)					# Atualizamos a direção
+					sw		a6,	0(a7)					# Atualizamos o sprite
+					j		getInputStick.testYm
+					
+	getInputStick.testXp:		li		t1,	823					# Valor do deadzone em direção a 1023	
+					ble		t0,	t1,	getInputStick.testYm		# Se for menor, o jogador não está indo nessa direção
+					# Vamos presumir esquerda
+					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
+					li		t1,	-1
+					mul		t1,	t1,	a2				# Esquerda significa reduzir a coordenada X, então invertemos a velocidade
+					add		t2,	t2,	t1				# Atualizamos a posição X
+					sh		t2,	0(a3)					# Guardamos no endereço certo
+					li		t1,	1					# 1 = esquerda
+					sb		t1,	0(a4)					# Atualizamos a direção
+					sw		a6,	0(a7)					# Atualizamos o sprite
+					
+	getInputStick.testYm:		lw		t0,	0(a1)					# Pegamos o valor do eixo Y
+					li		t1,	200					# Valor do deadzone em direção a zero
+					bge		t0,	t1,	getInputStick.testYp		# Se for maior, não está indo nessa direção
+					# Vamos presumir que é baixo
+					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
+					lbu		t2,	0(t1)
+					la		t1,	Arg8					# Pegamos o endereço onde está a velocidade de scroll da tela
+					lw		t3,	0(t1)					#
+					sb		t2,	0(t3)					# Atualizamos a velocidade
+					sw		a5,	0(a7)					# Usa o sprite padrão
+					j		getInputStick.testButton
+	
+	getInputStick.testYp:		li		t1,	823					# Deadzone em direção a 1023
+					ble		t0,	t1,	getInputStick.testButton	# Se for menor, não está indo nessa direção
+					la		t1,	scrollSpeedFast				# Pegamos o valor da velocidade no nível devagar
+					lbu		t2,	0(t1)
+					la		t1,	Arg8
+					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
+					sb		t2,	0(t3)					# Atualizamos a velocidade
+					sw		a5,	0(a7)					# Usa o sprite padrão
+	
+	getInputStick.testButton:	la		t0,	Arg9					# Pegamos o endereço do botão
+					lw		t1,	0(t0)
+					lw		t2,	0(t1)					# Pegamos o valor no endereço
+					bne		t2,	zero,	getInputStick.end		# O botão é ativo em zero
+					# Aqui colocaremos o caso de tiro
+
+	getInputStick.end:		ret
 			
 #############################
 # Gera um novo objeto				
@@ -906,7 +1081,22 @@ Leuf_f0: .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF,
 	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
 	 .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL
-
+	 
+# Bridge (40w 12h)
+Bridg_f0:.byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG 
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 
+	 
 # Player
 Plyr_0:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
@@ -932,23 +1122,23 @@ Plyr_0:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #4
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #5
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL #10
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #12
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #15   
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL    
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #17
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #20
                  
 
 #######################
