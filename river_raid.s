@@ -612,6 +612,8 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 							bgtu		a1,	t5,	drawObject.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
 							
 							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
+							li		t2,	RVCL			# Transparência
+							beq		t1,	t2,	drawObject.noDraw # Se a cor for igual a do rio, então não pintamos							
 							sb		t1,	0(t0)			# Desenhamos na tela
 	drawObject.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte
 	
@@ -626,6 +628,8 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 							bgtu		a1,	t5,	drawObject.noDrawF # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
 							
 							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
+							li		t2,	RVCL			# Transparência
+							beq		t1,	t2,	drawObject.noDrawF # Se a cor for igual a do rio, então não pintamos							
 							sb		t1,	0(t0)			# Desenhamos na tela
 	drawObject.noDrawF:				addi		a4,	a4,	-1		# Passamos para o próximo byte
 	
@@ -678,7 +682,7 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 							# CHECAGEM DE COLISÃO	
 							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
 							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
-							beq		t1,	t5,	drawPlayerChkC.noColl 	# Assim, ignoramos o teste de colisão
+							beq		t1,	t5,	drawPlayerChkC.noDraw 	# Assim, ignoramos o teste de colisão
 							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
 							beq		t4,	t5,	drawPlayerChkC.noColl 	# Se é rio, não fazemos nada
 							li		t5,	EXPL
@@ -695,7 +699,7 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo						
 															
 	drawPlayerChkC.noColl:				sb		t1,	0(t0)				# Desenhamos na tela
-							addi		a4,	a4,	1			# Passamos para o próximo byte
+	drawPlayerChkC.noDraw:				addi		a4,	a4,	1			# Passamos para o próximo byte
 	
 							addi		t0,	t0,	1			# Próximo endereço de pintura
 							addi		t6,	t6,	-1			# j--
@@ -707,7 +711,7 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 							# CHECAGEM DE COLISÃO	
 							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
 							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
-							beq		t1,	t5,	drawPlayerChkC.noCollF 	# Assim, ignoramos o teste de colisão
+							beq		t1,	t5,	drawPlayerChkC.noDrawF 	# Assim, ignoramos o teste de colisão
 							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
 							beq		t4,	t5,	drawPlayerChkC.noCollF 	# Se é rio, não fazemos nada
 							li		t5,	EXPL
@@ -724,7 +728,7 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo
 							
 	drawPlayerChkC.noCollF:				sb		t1,	0(t0)			# Desenhamos na tela
-							addi		a4,	a4,	-1		# Passamos para o próximo byte
+	drawPlayerChkC.noDrawF:				addi		a4,	a4,	-1		# Passamos para o próximo byte
 	
 							addi		t0,	t0,	1		# Próximo endereço de pintura
 							addi		t6,	t6,	-1		# j--
