@@ -11,7 +11,7 @@ x Adicionar transparência na rotina drawObject
 - Fazer rotina de geração de objetos, levando em consideração a dificuldade
   - Primeiro decide se é combústivel ou inimigo
     - Depois, decide qual inimigo
-- Fazer desenho inicial padrão do mapa
+x Fazer desenho inicial padrão do mapa
 
 x Adicionar variáveis de vidas, combústivel e score
 - Adicionar variável de perda de combústivel por ciclo
@@ -54,6 +54,7 @@ x Rotina de tratamento de input
 - Fazer subrotina de game over
 
 > Escolher todas as cores
+> Fazer rotina de reset de todos as variáveis em memória
 > Definir ordem de execução das rotinas
   - Tratamento de colisão
   - Movimento dos objetos

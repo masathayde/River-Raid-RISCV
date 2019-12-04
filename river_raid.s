@@ -44,13 +44,23 @@
 	# Tentar agrupar todos os words no começo para não precisar usar .align
 	Arg8: .word 0 # Caso seja necessário mais de 7 argumentos
 	Arg9: .word 0 # Pois é
-	
+
+#########################################################################################################################
+#  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ____________ _____ _   _ _____ ___________  ___  _____ _____ 
+# | | | |/ _ \ | ___ \_   _|/ _ \| | | |  ___|_   _/  ___| | ___ \ ___ \_   _| \ | /  __ \_   _| ___ \/ _ \|_   _/  ___|
+# | | | / /_\ \| |_/ / | | / /_\ \ | | | |__   | | \ `--.  | |_/ / |_/ / | | |  \| | /  \/ | | | |_/ / /_\ \ | | \ `--. 
+# | | | |  _  ||    /  | | |  _  | | | |  __|  | |  `--. \ |  __/|    /  | | | . ` | |     | | |  __/|  _  | | |  `--. \
+# \ \_/ / | | || |\ \ _| |_| | | \ \_/ / |___ _| |_/\__/ / | |   | |\ \ _| |_| |\  | \__/\_| |_| |   | | | |_| |_/\__/ /
+#  \___/\_| |_/\_| \_|\___/\_| |_/\___/\____/ \___/\____/  \_|   \_| \_|\___/\_| \_/\____/\___/\_|   \_| |_/\___/\____/ 
+#########################################################################################################################                                                                                                                                                                                                                  	
+
 	gameTime: .word 0
 	framePtr: .word 0
 	HiScore: .word 0
-	gameLevel: .word 0										# Número de seções vencidas
-	difficulty: .byte 0										# Dificuldade
-	maxDiffic: .byte 10										# Dificuldade máxima
+	gameLevel: .word 1				# Número de seções vencidas ( número de pontes geradas)
+	difficulty: .byte 0				# Dificuldade atual
+	maxDiffic: .byte 5				# Dificuldade máxima
+	difficInterv: .byte 1				# Número de seções para que haja aumento de dificuldade
 	
 	
 	
@@ -101,12 +111,18 @@
 	pfReadStartOffset: .byte 160
 	pfReadEndOffset: .byte 0
 	playfield: .space 192										# 160 linhas são visíveis ao mesmo tempo, 32 a mais para armazenar novo bloco
-	
-	
+
+##############################################	
+# ___________   ___ _____ _____ _____ _____ 
+# |  _  | ___ \ |_  |  ___|_   _|  _  /  ___|
+# | | | | |_/ /   | | |__   | | | | | \ `--. 
+# | | | | ___ \   | |  __|  | | | | | |`--. \
+# \ \_/ / |_/ /\__/ / |___  | | \ \_/ /\__/ /
+#  \___/\____/\____/\____/  \_/  \___/\____/ 
+##############################################                                                                                     	
 	.align 2
 	objectPtrList: .space 24										# Somente 6 objetos por tela
 	
-	object0: .space 32
 	# objectBitmapPtr: .word
 	# objectAction: .word
 	# objectType: .byte
@@ -120,6 +136,7 @@
 	# objectAnimationCounter: .byte
 	# objectIsAnim: .byte
 	# objectCollsion: .byte
+	object0: .space 32
 	object1: .space 32
 	object2: .space 32
 	object3: .space 32
@@ -190,10 +207,21 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		s0,	s0,	-1			# i--
 						j		InitSetup.genMap.0
 						
-	InitSetup.genMap.0.end:		la		a0,	blockCurrent			# Geração dos blocos no mapa	
+	InitSetup.genMap.0.end:		la		a0,	blockCurrent			# Geração do bloco novo
 					la		a1,	blockPrevious
+					la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
+					la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
+					la		t2,	difficulty			# Endereço da dificuldade
+					lbu		t3,	0(t2)				# Pegamos o valor da dificuldade
+					lbu		t4,	0(t1)				# Pegando o offset
+					mul		t3,	t3,	t4			# Multiplicando dificuldade por offset para acharmos a posição na tabela
+					add		t0,	t0,	t3			# Encontramos o endereço da posição correspondente à dificuldade atual
+					lbu		a2,	0(t0)				# Quantidade de blocos máxima de terra, partindo da ponta
+					lbu		a3,	1(t0)				# Quantidade de blocos mínima de rio
+					lbu		a4,	2(t0)				# Largura mínima de abertura
+						
 					call		createBlock
-		
+					
 					la		a0,	playfield
 					la		t0,	pfWriteOffset
 					lbu		a1,	0(t0)
@@ -258,9 +286,9 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # | | | |  __/| | | |  _  || | |  __| 
 # | |_| | |   | |/ /| | | || | | |___ 
 #  \___/\_|   |___/ \_| |_/\_/ \____/ 
-#######################################                                    							
+########################################                                    							
 					
-						# Atualização dos offsets
+						# Atualização dos offsets de leitura
 						la		t0,	pfReadStartOffset		# Pegando o offset atual
 						lbu		t1,	0(t0)
 						la		t2,	scrollSpeed			# Pegando velocidade de scroll
@@ -268,10 +296,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						add		t1,	t1,	t3			# Atualizando o offset em si
 						li		t4,	192				# Fazendo o wrap around (se o offset passar de 192, deve voltar ao começo)
 						remu		t1,	t1,	t4
-						sb		t1,	0(t0)
+						sb		t1,	0(t0)				
 						
 						# Checagem para criação de bloco novo
-						la		t0,	lineDrawnCounter
+	Update.genNewBlock:			la		t0,	lineDrawnCounter
 						lbu		t1,	(t0)
 						la		t2,	scrollSpeed
 						lbu		t3,	0(t2)
@@ -294,8 +322,27 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						sb		t3,	0(t1)				# Salvando em Previous
 						sb		t2,	0(t0)				# Salvando o bloco novo em Current
 						# TODO: Incluir criação de objeto
-						j		Update.write2Playfield
-						
+						# Game level update
+						la		t1,	gameLevel			# Como geramos uma ponte, incrementamos o nível do jogo
+						lw		t0,	0(t1)				# O nível do jogo é usado na decisão de dificuldade
+						addi		t0,	t0,	1
+						sw		t0,	0(t1)
+						# Atualização da dificuldade
+						la		t0,	gameLevel			# Pegamos o nível do jogo
+						lw		t1,	0(t0)
+						la		t2,	difficInterv			# Pegamos o intervalo de dificuldade
+						lbu		t3,	0(t2)				
+						remu		t1,	t1,	t3			# Se o resultado da operação mod = 0, então atualizamos a dificuldade
+						bne		t1,	zero,	Update.write2Playfield	# Se não, nada fazemos
+						la		t0,	difficulty
+						lbu		t1,	0(t0)				# Carregando o valor da dificuldade
+						addi		t1,	t1,	1			# Incrementando
+						la		t2,	maxDiffic
+						lbu		t3,	0(t2)				# Carregando valor da dificuldade máxima
+						blt		t1,	t3,	Update.notMaxDiffic	# Se o valor da nova dificuldade for maior que o máximo, ajustamos-o
+						mv		t1,	t3				# Chegando à dificuldade máxima, o jogo permanece nela
+	Update.notMaxDiffic:			sb		t1,	0(t0)				# Dificuldade atualizada
+						j		Update.write2Playfield			
 						
 	Update.genPreBridge:			la		t0,	blockCurrent
 						la		t1,	blockPrevious
@@ -308,8 +355,19 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 	Update.normalBlock:			la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
-						# TODO: Incluir criação de objeto
+						
+						la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
+						la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
+						la		t2,	difficulty			# Endereço da dificuldade
+						lbu		t3,	0(t2)				# Pegamos o valor da dificuldade
+						lbu		t4,	0(t1)				# Pegando o offset
+						mul		t3,	t3,	t4			# Multiplicando dificuldade por offset para acharmos a posição na tabela
+						add		t0,	t0,	t3			# Encontramos o endereço da posição correspondente à dificuldade atual
+						lbu		a2,	0(t0)				# Quantidade de blocos máxima de terra, partindo da ponta
+						lbu		a3,	1(t0)				# Quantidade de blocos mínima de rio
+						lbu		a4,	2(t0)				# Largura mínima de abertura	
 						call		createBlock
+						# TODO: Incluir criação de objeto
 		
 	Update.write2Playfield:			la		a0,	playfield
 						la		t0,	pfWriteOffset
@@ -474,9 +532,14 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 			
 
+############################################################
 # Criar bloco no próximo espaço de 32 linhas disponível
 # a0: Endereço do bloco atual (que será substituído)
 # a1: Endereço para armazenar bloco atual após substituição
+# a2: Número máximo de espaços de terra vindo da ponta
+# a3: Número mínimo de espaços de rios
+# a4: Largura mínima de abertura
+############################################################
 createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 					sw		s0,	0(sp)
 					sw		s1,	4(sp)
@@ -495,14 +558,21 @@ createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 					srli		s3,	s3,	4				# Movendo os bits para a direita
 					
 					
-	# Gerando o primeiro número aleatório				
+	# Gerando o primeiro número aleatório
+	# Agora precisamos levar a dificuldade em consideração na geração de blocos
+	# a2 = número máximo de blocos de terra
+	# a4 = número mínimo da abertura entre blocos
+	# No algoritmo atual,  a largura mínima extra é sempre aplicada à esquerda		
 					li		a7,	41					# Gerando o número
 					ecall
-					add		t1,	s2,	s3				# a' deve estar em [0, a+b), para isso usamos a função mod
-					remu		s4,	a0,	t1				# a' = random mod (a+b)
-					
+					add		t1,	s2,	s3				# t1 = a+b
+					blt		t1,	a2,	createBlock.minIsAB		# Vemos se a+b é menor que o número máximo
+					mv		t1,	a2					# Se não for, trocamos por a2									# a' deve estar em [0, min(a+b, a2) ), para isso usamos a função mo
+	createBlock.minIsAB:		sub		t1,	t1,	a4				# Levamos a largura mínima em consideração
+					bgt		t1,	zero,	createBlock.ABisOK		# Caso o valor seja negativo após a operação anterior, haverá erro na próx. operação
+					li		t1,	1					# Acertamos o valor de a+b, se for negativo
+	createBlock.ABisOK:		remu		s4,	a0,	t1				# a' = random mod min(a+b,a2)					
 	# A decisão do segundo número depende do valor do primeiro (borda esquerda). Precisamos ter certeza que não será criado um bloco impossível de ser atravessado.
-	
 					ecall								# a7 não foi alterado, pegamos novo aleatório
 								
 	# Fórmula: b' = R mod (7 - max(a', a)) + m + 1
@@ -510,18 +580,25 @@ createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 					
 					# a1 = max(a', a)
 					mv		a1,	s4					# a1 = a'
-					mv		a2,	zero					# a2 = m = 0
+					mv		t1,	zero					# t1 = m = 0
 					bge		s4,	s3,	createBlock.noAdjust		# Se a' >= a, pulamos
 					mv		a1,	s3					# a1 = a
-					sub		a2,	s3,	s4				# m = a' - a
+					sub		t1,	s3,	s4				# m = a' - a
 	createBlock.noAdjust:		li		t0,	7
 					sub		t0,	t0,	a1				# t0 = 7 - max(a', a)
 					remu		a0,	a0,	t0				# a0 = R mod (7 - max(a', a))
-					add		a0,	a0,	a2				# a0 += m
+					add		a0,	a0,	t1				# a0 += m
 					addi		a0,	a0,	1				# a0++ ; Fórmula completa
+					add		t0,	t0,	t1				# Para calcular o valor máximo de espaços de rio possível: (7 - max(a', a)) + m
+	# Considerando a dificuldade
+	# a3: número mínimo de espaços de rio
+					bge		a0,	a3,	createBlock.riverOK		# Se o valor aleatório calculado for maior que o mínimo permitido, OK
+					mv		a0,	a3					# Se não, trocamos para o valor mínimo
+					blt		a0,	t0,	createBlock.riverOK		# Mas também precisamos ter certeza que o valor mínimo não é maior que o máximo..
+					mv		a0,	t0					# ..de espaços neste bloco
 					
 	# Hora de colocar os dois números em um byte só
-					slli		s4,	s4,	4				# Colocamos a borda esquerda na parte superior do byte
+	createBlock.riverOK:		slli		s4,	s4,	4				# Colocamos a borda esquerda na parte superior do byte
 					or		a0,	a0,	s4				# Juntando os dois valores					
 					sb		t6,	0(s1)					# Bloco atual se torna anterior
 					sb		a0,	0(s0)					# Novo bloco gerado
@@ -532,9 +609,7 @@ createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
 					lw		s3,	12(sp)
 					lw		s4,	16(sp)
 					addi		sp,	sp,	20				# Desempilhar
-					
 					ret
-
 
 ########################################					
 # Escreve o novo bloco no buffer do mapa
@@ -1015,7 +1090,6 @@ placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
 					addi		t2,	t2,	1				# Queremos um número entre 0 e n (número de blocos de rio)
 					remu		t3,	a0,	t2				# Operação mod para que seja um número entre os blocos de rio
 					add		t3,	t3,	t0				# Temos o bloco "x" escolhido
-					li		a7,	41
 					ecall								# Outro número aleatório para decidir qual lado da tela
 					li		t2,	2
 					remu		t2,	a0,	t2				# b = 0 ou 1
@@ -1273,14 +1347,15 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 # Byte 02: Largura mínima de abertura
 # Byte 03: Probabilidade de gerar combústivel (1/x) (Na rotina, se o número aleatório Mod x == 0, é fuel)
 # Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
-# Offset: 5
-Difficulty: 	.byte 0, 7, 2, 4, 2 # Dificuldade 0
-	  	.byte 2, 5, 2, 4, 2 # Dificuldade 1
-	  	.byte 4, 3, 2, 6, 3 # Dificuldade 2
-	  	.byte 5, 2, 2, 7, 4 # Dificuldade 3
+########################
+DifficultyOffset:	.byte 5
+DifficultyTable:	.byte 0, 7, 2, 4, 2 # Dificuldade 0
+	  		.byte 2, 5, 2, 4, 2 # Dificuldade 1
+	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
+	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
 	  	
 	  	
-	  	.byte 6, 1, 1, 12,4 # Doomguy_shocked.png
+	  		.byte 6, 1, 1, 12,4 # Doomguy_ouch.png
 
 
 
