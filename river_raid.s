@@ -48,8 +48,12 @@
 	gameTime: .word 0
 	framePtr: .word 0
 	HiScore: .word 0
-	gameLevel: .byte 0										# Dificuldade
-	maxLevel: .byte 3										# Dificuldade máxima
+	gameLevel: .word 0										# Número de seções vencidas
+	difficulty: .byte 0										# Dificuldade
+	maxDiffic: .byte 10										# Dificuldade máxima
+	
+	
+	
 	
 	frameToShow: .byte 1 # Frame do VGA selecionado										
 	scrollSpeed: .byte 2 # Velocidade de scroll vertical atual
@@ -61,6 +65,7 @@
 	blockWriteOffset: .byte 0
 	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
+	blockCounter: .byte 0 # Número de blocos criados
 	
 	lineDrawnCounter: .byte 0									# Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
 
@@ -154,19 +159,20 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					sw		t1,	0(t0)					# Salvando no espaço correto
 
 
-					li		s0,	6					# i = 6
-	InitSetup.genMap:		beq		s0,	zero,	InitSetup.genMap.end		# (while i > 0)
+	# Os primeiros blocos são sempre neutros #
+					li		s0,	5					# i = 5
+	InitSetup.genMap.0:		beq		s0,	zero,	InitSetup.genMap.0.end		# (while i > 0)
 						
-						la		a0,	blockCurrent			# Geração dos blocos no mapa	
-						la		a1,	blockPrevious
-						call		createBlock
+						la		t0,	blockCurrent
+						li		t1,	0x07				# Um bloco sem ilha e com a maior largura possível
+						sb		t1,	0(t0)				# Salvamos no endereço do bloco atual
 		
 						la		a0,	playfield
 						la		t0,	pfWriteOffset
 						lbu		a1,	0(t0)
 						la		t0,	blockCurrent
 						lbu		a2,	0(t0)
-						call		writeBlockToPlayfield
+						call		writeBlockToPlayfield			# Salvando no playfield
 						
 						la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
 						lbu		t1,	0(t0)
@@ -175,9 +181,37 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						remu		t1,	t1,	t2			# Wraparound
 						sb		t1,	0(t0)
 						
+						la		t0,	blockCounter
+						lbu		t1,	0(t0)				# Atualizamos o número de blocos escritos
+						addi		t1,	t1,	1
+						sb		t1,	0(t0)
+						
 						
 						addi		s0,	s0,	-1			# i--
-						j		InitSetup.genMap
+						j		InitSetup.genMap.0
+						
+	InitSetup.genMap.0.end:		la		a0,	blockCurrent			# Geração dos blocos no mapa	
+					la		a1,	blockPrevious
+					call		createBlock
+		
+					la		a0,	playfield
+					la		t0,	pfWriteOffset
+					lbu		a1,	0(t0)
+					la		t0,	blockCurrent
+					lbu		a2,	0(t0)
+					call		writeBlockToPlayfield
+					
+					la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
+					lbu		t1,	0(t0)
+					addi		t1,	t1,	32
+					li		t2,	192
+					remu		t1,	t1,	t2			# Wraparound
+					sb		t1,	0(t0)
+					
+					la		t0,	blockCounter
+					lbu		t1,	0(t0)				# Atualizamos o número de blocos escritos
+					addi		t1,	t1,	1
+					sb		t1,	0(t0)
 						
 	InitSetup.genMap.end:
 	
@@ -217,8 +251,15 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	framePtr			# Endereço do frame a desenhar
 						lw		a3,	0(t0)
 						call		renderPlayfield
-						
-	# Update					
+########################################
+#  _   _____________  ___ _____ _____ 
+# | | | | ___ \  _  \/ _ \_   _|  ___|
+# | | | | |_/ / | | / /_\ \| | | |__  
+# | | | |  __/| | | |  _  || | |  __| 
+# | |_| | |   | |/ /| | | || | | |___ 
+#  \___/\_|   |___/ \_| |_/\_/ \____/ 
+#######################################                                    							
+					
 						# Atualização dos offsets
 						la		t0,	pfReadStartOffset		# Pegando o offset atual
 						lbu		t1,	0(t0)
@@ -240,11 +281,37 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						sb		t5,	0(t0)				# Armazenamos na memória o valor
 						blt		t1,	t4,	NoNewBlock		# Se foram desenhadas menos de 32 linhas, nada a fazer
 						
-						la		a0,	blockCurrent			# Geração do bloco novo
+						la		t0,	blockCounter
+						lbu		t1,	0(t0)				# Vemos quantos blocos foram gerados
+						li		t2,	14				
+						beq		t1,	t2,	Update.genPreBridge	# Se estivermos criando o bloco 15, queremos que seja o mais largo possível
+						li		t2,	15
+						bne		t1,	t2,	Update.normalBlock	# Se não estivermos criando o bloco 16, precisa ser ponte
+						la		t0,	blockCurrent			# É hora de criar uma ponte
+						la		t1,	blockPrevious
+						li		t2,	0x52				# Bloco do tamanho certo para a ponte
+						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
+						sb		t3,	0(t1)				# Salvando em Previous
+						sb		t2,	0(t0)				# Salvando o bloco novo em Current
+						# TODO: Incluir criação de objeto
+						j		Update.write2Playfield
+						
+						
+	Update.genPreBridge:			la		t0,	blockCurrent
+						la		t1,	blockPrevious
+						li		t2,	0x07				# Bloco mais largo possível
+						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
+						sb		t3,	0(t1)				# Salvando em Previous
+						sb		t2,	0(t0)				# Salvando o bloco novo em Current
+						# TODO: Incluir criação de objeto
+						j		Update.write2Playfield
+						
+	Update.normalBlock:			la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
+						# TODO: Incluir criação de objeto
 						call		createBlock
 		
-						la		a0,	playfield
+	Update.write2Playfield:			la		a0,	playfield
 						la		t0,	pfWriteOffset
 						lbu		a1,	0(t0)
 						la		t0,	blockCurrent
@@ -256,9 +323,14 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		t1,	t1,	32
 						li		t2,	192
 						remu		t1,	t1,	t2			# Wraparound
-						sb		t1,	0(t0)
 						
-						#### EXPERIMENTO
+						sb		t1,	0(t0)
+						la		t0,	blockCounter
+						lbu		t1,	0(t0)				# Atualizamos o número de blocos escritos
+						addi		t1,	t1,	1
+						li		t2,	16				# Número de blocos por sessão
+						remu		t1,	t1,	t2			# Fazemos o mod para resetar o contador
+						sb		t1,	0(t0)
 						
 						
 																		
@@ -291,18 +363,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lw		a5, 0(t0)
 						li		a6, 0
 						call	drawObject
-	
-						li		a0, 10
-						la		t0, testObjY
-						lw		a1, 0(t0)
-						#li		a1, 140
-						li		a2, 20
-						li		a3, 20
-						la		a4, Plyr_1
-						la		t0, framePtr
-						lw		a5, 0(t0)
-						li		a6, 1
-						call	drawObject
 						
 # ______      _   _                       _           ___                       _            
 # | ___ \    | | (_)                     | |         |_  |                     | |           
@@ -330,10 +390,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						
 						li		a0,	0xFF200200
-						lw		s7, 0(a0) #debug
 						li		a1,	0xFF200204
-						lw		s8, 0(a1) # debug
-						#ebreak #debug
 						la		t0,	playerSpeedX
 						lbu		a2,	0(t0)
 						la		a3,	playerPosX

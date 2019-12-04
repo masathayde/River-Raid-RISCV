@@ -2,7 +2,8 @@ River Raid Todo List
 
 x Colocar ponte no .data
 x Definir variável de dificuldade
-- Fazer com que uma ponte seja gerada a cada 16 blocos
+x Fazer com que uma ponte seja gerada a cada 16 blocos
+- Ajustamos a criação de blocos, mas ainda falta a geração de objetos
 - Geração de blocos levando a dificuldade em consideração
 
 x Adicionar transparência na rotina drawObject
