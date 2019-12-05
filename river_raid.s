@@ -121,7 +121,7 @@
 #  \___/\____/\____/\____/  \_/  \___/\____/ 
 ##############################################                                                                                     		
 	.align 2
-	objectPtrList: .word object0, object1, object2, object3, object4, object5			# Somente 6 objetos por tela
+	objectPtrList: .word object0, object1, object2, object3, object4, object5
 	
 	# 00 objectBitmapPtr0: .word # endereço do frame 0
 	# 04 objectBitmapPtr1: .word # endereço do frame 1
@@ -196,7 +196,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					la		t4,	object4
 					sw		zero,	0(t4)
 					la		t5,	object5
-					sw		zero,	0(t5)		
+					sw		zero,	0(t5)
 
 
 	# Os primeiros blocos são sempre neutros #
@@ -332,12 +332,13 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 							lw		t0,	0(s2)
 							beq		t0,	zero,	Render.drawObjects.empty # Não desenhamos se ainda não foi escrito
+							
 							lhu		a0,	16(s2)			# Coordenada X aqui
-							lb		a1,	20(s2)			# Coordenada Y aqui
-							lbu		a2,	22(s2)			# Altura do objeto
-							lbu		a3,	23(s2)			# Largura do objeto
+							lh		a1,	18(s2)			# Coordenada Y aqui
+							lbu		a2,	23(s2)			# Altura do objeto
+							lbu		a3,	24(s2)			# Largura do objeto
 							lw		a4,	0(s2)			# Endereço do bitmap do objeto
-							lbu		a6,	24(s2)			# Direção do objeto
+							lbu		a6,	25(s2)			# Direção do objeto
 							la		t0,	framePtr
 							lw		a5,	0(t0)			# Endereço do VGA
 							call		drawObject
@@ -372,9 +373,9 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							beq		t0,	zero,	Update.objectMovement.empty # Se estiver vazio, não pulamos para o próximo
 							la		t0,	scrollSpeed		# Velocidade de scroll vertical
 							lbu		t1,	0(t0)			# Pegamos para atualizar a posição de todos os objetos
-							lb		t2,	20(s2)			# Coordenada Y
+							lh		t2,	18(s2)			# Coordenada Y
 							add		t2,	t2,	t1
-							sb		t2,	20(s2)			# Atualizado													
+							sh		t2,	18(s2)			# Atualizado													
 	Update.objectMovement.empty:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
 							j		Update.objectMovement
@@ -457,7 +458,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 	Update.normalBlock:			la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
-						
 						la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
 						la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
 						la		t2,	difficulty			# Endereço do valor da dificuldade atual
@@ -482,7 +482,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						add		t6,	t6,	t3			# Aplicando offset
 						lw		a0,	0(t6)				# Endereço de escrita do objeto certo
 						mv		s7,	a0				# Salvando valor para a rotina placeObject
-						addi		a1,	a0,	24			# Número mágico que indica em que endereço está a variável de direção
+						addi		a1,	a0,	25			# Número mágico que indica em que endereço está a variável de direção
 						la		a2,	objectFuel			# Endereço da tabela de objetos (o primeiro elemento é fuel)
 						la		t1,	objectSize
 						lbu		a3,	0(t1)				# Tamanho do objeto
@@ -499,14 +499,14 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						addi		t0,	s7,	16			# Endereço de escrita salvo antes de generateObject, com offset..
 						sh		a0,	0(t0)				# ..para acharmos o endereço de objectPosX
-						addi		t1,	s7,	20			# Endereço de PosY
+						addi		t1,	s7,	18			# Endereço de PosY
 						sh		a1,	0(t1)	
 						
 						la		t0,	objectListWriteIdx		# Atualizando
 						lbu		t1,	0(t0)
 						addi		t1,	t1,	1
 						li		t2,	6
-						remu		t1,	t1,	t2			# Índice dever estar sempre em [0,5]
+						remu		t1,	t1,	t2			# Índice dever estar sempre em [0,6]
 						sb		t1,	0(t0)				# Atualizado
 
 						# TODO: Incluir criação de objeto
@@ -1279,7 +1279,6 @@ placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
 					
 					li		a7,	41
 					ecall								# Gerando o número aleatório
-					addi		t2,	t2,	1				# Queremos um número entre 0 e n (número de blocos de rio)
 					remu		t3,	a0,	t2				# Operação mod para que seja um número entre os blocos de rio
 					add		t3,	t3,	t0				# Temos o bloco "x" escolhido
 					ecall								# Outro número aleatório para decidir qual lado da tela
@@ -1562,7 +1561,7 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 # Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
 ########################
 DifficultyOffset:	.byte 5
-DifficultyTable:	.byte 0, 7, 2, 4, 2 # Dificuldade 0
+DifficultyTable:	.byte 6, 1, 1, 12, 4 # Dificuldade 0
 	  		.byte 2, 5, 2, 4, 2 # Dificuldade 1
 	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
 	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
@@ -1581,151 +1580,151 @@ objectFuel: 	.word Fuel_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.word Fuel_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
 		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
 		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half	.byte 0
-		.byte 0			# 18 objectIsAnim: .byte			
-		.byte 0			# 19 objectType: .byte	
-		.byte 0			# 20 objectYpos: .byte	
-		.byte 0			# 21 objectXspeed: .byte	
-		.byte 20		# 22 objectHeight: .byte	
-		.byte 20		# 23 objectWidth: .byte	
-		.byte 0			# 24 objectDirection: .byte	
-		.byte 0			# 25 objectAnimationCounter: .byte	
-		.byte 0			# 26 objectAnimationTime: .byte	
-		.byte 0			# 27 objectCollided: .byte # booleana de colisão	
-		.space 4
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 0			# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 01 - Helicopter
-objectHeli:	.word Heli_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Heli_f1			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 1				# 18 objectIsAnim: .byte			
-		.byte 1				# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 1				# 21 objectXspeed: .byte
-		.byte 20			# 22 objectHeight: .byte
-		.byte 20			# 23 objectWidth: .byte
-		.byte 0				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 2				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectHeli:	.word Heli_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Heli_f1		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 1			# 20 objectType: .byte	
+		.byte 1			# 21 objectIsAnim: .byte
+		.byte 1			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 5			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 02 - Ship
-objectShip:	.word Ship_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Ship_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 2				# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 1				# 21 objectXspeed: .byte
-		.byte 20			# 22 objectHeight: .byte
-		.byte 20			# 23 objectWidth: .byte
-		.byte 0				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 0				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectShip:	.word Ship_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Ship_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 2			# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 1			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 03 - Plane
-objectPlane: 	.word Plane_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Plane_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 3				# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 2				# 21 objectXspeed: .byte
-		.byte 20			# 22 objectHeight: .byte
-		.byte 20			# 23 objectWidth: .byte
-		.byte 1				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 0				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectPlane: 	.word Plane_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Plane_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 3			# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 2			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 04 - Bad fuel
-objectLeuf:	.word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 4				# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 2				# 21 objectXspeed: .byte
-		.byte 20			# 22 objectHeight: .byte
-		.byte 20			# 23 objectWidth: .byte
-		.byte 1				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 0				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectLeuf:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 4			# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 97 - Explosion
-objectExplo:    .word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 97			# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 0				# 21 objectXspeed: .byte
-		.byte 20			# 22 objectHeight: .byte
-		.byte 20			# 23 objectWidth: .byte
-		.byte 0				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 5				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectExplo:    .word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 97		# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 98 - Empty
-objectEmpty:	.word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 98			# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 0				# 21 objectXspeed: .byte
-		.byte 1				# 22 objectHeight: .byte
-		.byte 1				# 23 objectWidth: .byte
-		.byte 0				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 0				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectEmpty:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 98		# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 .align 2
 # 99 - Bridge
-objectBridge:	.word Bridg_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
-		.word Bridg_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
-		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
-		.word 0				# 12 objectAction: .word # endereço de rotina especial
-		.half 0				# 16 objectXpos: .half	.byte 0
-		.byte 0				# 18 objectIsAnim: .byte			
-		.byte 99			# 19 objectType: .byte
-		.byte 0				# 20 objectYpos: .byte
-		.byte 0				# 21 objectXspeed: .byte
-		.byte 12			# 22 objectHeight: .byte
-		.byte 40			# 23 objectWidth: .byte
-		.byte 0				# 24 objectDirection: .byte
-		.byte 0				# 25 objectAnimationCounter: .byte
-		.byte 0				# 26 objectAnimationTime: .byte
-		.byte 0				# 27 objectCollided: .byte # booleana de colisão
-		.space 4
+objectBridge:	.word Bridg_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Bridg_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 99		# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
 
 #######################
 # Includes

@@ -10,10 +10,11 @@ x Geração de blocos levando a dificuldade em consideração
 
 x Adicionar transparência na rotina drawObject
 
-- Fazer rotina de geração de objetos, levando em consideração a dificuldade
-  - Primeiro decide se é combústivel ou inimigo
-    - Depois, decide qual inimigo
+x Fazer rotina de geração de objetos, levando em consideração a dificuldade
+  x Primeiro decide se é combústivel ou inimigo
+    x Depois, decide qual inimigo
 x Fazer desenho inicial padrão do mapa
+- Consertar placeObject
 
 x Adicionar variáveis de vidas, combústivel e score
 - Adicionar variável de perda de combústivel por ciclo
@@ -27,7 +28,6 @@ x Quantos tipos de colisão? (4)
     - Se não for, checar se é combústivel
       - Se não for, checar se é bad fuel
         - Se não for, então é destruição
-x Fazer uma pequena rotina de teste de colisão
 
 x Fazer movimentação do jogador
 x Rotina de tratamento de input
