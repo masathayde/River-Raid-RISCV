@@ -3,8 +3,10 @@ River Raid Todo List
 x Colocar ponte no .data
 x Definir variável de dificuldade
 x Fazer com que uma ponte seja gerada a cada 16 blocos
-- Ajustamos a criação de blocos, mas ainda falta a geração de objetos
-- Geração de blocos levando a dificuldade em consideração
+x Geração de blocos levando a dificuldade em consideração
+
+- Colocar explosão no rom
+- Colocar "empty" no rom"
 
 x Adicionar transparência na rotina drawObject
 
@@ -61,3 +63,4 @@ x Rotina de tratamento de input
   - Movimento do jogador
   - Pintura
     - Pintura do jogador por último
+> Fazer CD com TUDO

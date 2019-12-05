@@ -119,29 +119,33 @@
 # | | | | ___ \   | |  __|  | | | | | |`--. \
 # \ \_/ / |_/ /\__/ / |___  | | \ \_/ /\__/ /
 #  \___/\____/\____/\____/  \_/  \___/\____/ 
-##############################################                                                                                     	
+##############################################                                                                                     		
 	.align 2
-	objectPtrList: .space 24										# Somente 6 objetos por tela
+	objectPtrList: .word object0, object1, object2, object3, object4, object5			# Somente 6 objetos por tela
 	
-	# objectBitmapPtr: .word
-	# objectAction: .word
-	# objectType: .byte
-	# objectState: .byte			
-	# objectXpos: .half
-	# objectYpos: .byte
-	# objectXspeed: .byte
-	# objectHeight: .byte
-	# objectWidth: .byte
-	# objectDirection: .byte
-	# objectAnimationCounter: .byte
-	# objectIsAnim: .byte
-	# objectCollsion: .byte
+	# 00 objectBitmapPtr0: .word # endereço do frame 0
+	# 04 objectBitmapPtr1: .word # endereço do frame 1
+	# 08 objectCollision: .word # endereço da rotina de colisão
+	# 12 objectAction: .word # endereço de rotina especial
+	# 14 objectType: .byte
+	# 15 objectIsAnim: .byte		
+	# 16 objectXpos: .half
+	# 18 objectYpos: .byte
+	# 19 objectXspeed: .byte
+	# 20 objectHeight: .byte
+	# 21 objectWidth: .byte
+	# 22 objectDirection: .byte
+	# 23 objectAnimationCounter: .byte # Contador de frames de animação
+	# 24 objectAnimationTime: .byte # Números de frames até que seja executado a rotina em objectAction
+	.align 2
 	object0: .space 32
 	object1: .space 32
 	object2: .space 32
 	object3: .space 32
 	object4: .space 32
 	object5: .space 32
+	
+	objectListWriteIdx: .byte 0	# Índice do vetor de objetos onde será escrito o próximo
 	
 .text
 
@@ -152,6 +156,7 @@
 Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
  					csrrw 		zero,5,tp 		# seta utvec (reg 5) para o endereço tp
  					csrrsi 		zero,0,1 		# seta o bit de habilitação de interrupção em ustatus (reg 0)
+ 					
 
 # .d8888b.  8888888888 88888888888 888     888 8888888b.       8888888 888b    888 8888888 .d8888b. 8888888        d8888 888      
 # d88P  Y88b 888            888     888     888 888   Y88b        888   8888b   888   888  d88P  Y88b  888         d88888 888      
@@ -163,17 +168,35 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #  "Y8888P"  8888888888     888      "Y88888P"  888             8888888 888    Y888 8888888 "Y8888P" 8888888 d88P     888 88888888 
 
 	InitSetup:			
-#	   ___  _____ _____   ___ ______ ___________ 
-#	  |_  ||  _  |  __ \ / _ \|  _  \  _  | ___ \
-#	    | || | | | |  \// /_\ \ | | | | | | |_/ /
-#	    | || | | | | __ |  _  | | | | | | |    / 
-#	/\__/ /\ \_/ / |_\ \| | | | |/ /\ \_/ / |\ \ 
-#	\____/  \___/ \____/\_| |_/___/  \___/\_| \_|
+# ______ _____ _____ _____ _____ 
+# | ___ \  ___/  ___|  ___|_   _|
+# | |_/ / |__ \ `--.| |__   | |  
+# |    /|  __| `--. \  __|  | |  
+# | |\ \| |___/\__/ / |___  | |  
+# \_| \_\____/\____/\____/  \_/  
 #	
-#	Resetando todos os dados					
+#	Resetando todos as variáveis..					
 					la		t0,	playerCrrSpr				
 					la		t1,	Plyr_0					# Sprite do jogador padrão
 					sw		t1,	0(t0)					# Salvando no espaço correto
+					
+					
+					la		t0,	objectListWriteIdx			# Resetando o índice da lista de objetos
+					li		t1,	0
+					sb		t1,	0(t0)
+					
+					la		t0,	object0					# Colocando zero em todos os objetos para indicar que não foram criados ainda
+					sw		zero,	0(t0)
+					la		t1,	object1
+					sw		zero,	0(t1)
+					la		t2,	object2
+					sw		zero,	0(t2)
+					la		t3,	object3
+					sw		zero,	0(t3)
+					la		t4,	object4
+					sw		zero,	0(t4)
+					la		t5,	object5
+					sw		zero,	0(t5)		
 
 
 	# Os primeiros blocos são sempre neutros #
@@ -245,10 +268,18 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	
 	
 	InitSetup.end:
-	
+############################################################
+#  _____   ___  ___  ___ _____   _     _____  ___________ 
+# |  __ \ / _ \ |  \/  ||  ___| | |   |  _  ||  _  | ___ \
+# | |  \// /_\ \| .  . || |__   | |   | | | || | | | |_/ /
+# | | __ |  _  || |\/| ||  __|  | |   | | | || | | |  __/ 
+# | |_\ \| | | || |  | || |___  | |___\ \_/ /\ \_/ / |    
+#  \____/\_| |_/\_|  |_/\____/  \_____/\___/  \___/\_|    
+############################################################
+
 	# Loop principal do jogo
 	# Pegamos o tempo no começo de cada ciclo para calcularmos o tempo de sleep no final, com base no time step escolhido
-	MainLoop:				nop # placeholder
+	MainLoop:
 	
 						# Get Frame Start Time
 						# Para o RARS
@@ -257,7 +288,15 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						ecall						
 						sw		a0,	0(t0)				# Salvamos em time
 			
-			
+
+################################################
+# ______ _____ _____ _____ _   _  _   _ _____ 
+# |  _  \  ___/  ___|  ___| \ | || | | |  _  |
+# | | | | |__ \ `--.| |__ |  \| || |_| | | | |
+# | | | |  __| `--. \  __|| . ` ||  _  | | | |
+# | |/ /| |___/\__/ / |___| |\  || | | \ \_/ /
+# |___/ \____/\____/\____/\_| \_/\_| |_/\___/ 
+################################################
 	# Fase de renderização
 	# Usa-se a técnica de double buffering para evitar o efeito de "piscamento"
 	Render:					la		t0,	frameToShow			# Trocamos de frame
@@ -279,6 +318,36 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	framePtr			# Endereço do frame a desenhar
 						lw		a3,	0(t0)
 						call		renderPlayfield
+						
+	######################
+	# DESENHO DE OBJETOS #
+	######################
+	# Nota: Também faz detecção de colisão
+						li		s0,	0				# s0 = i
+						li		s1,	6
+						la		s2,	object0				# Endereço do primeiro objeto
+						la		t0,	objectSize			
+						lbu		s3,	0(t0)				# Tamanho dos objetos, para cálculo de offset
+	Render.drawObjects:			beq		s0,	s1,	Render.drawObjects.end	# Para cada um dos objetos
+						
+							lw		t0,	0(s2)
+							beq		t0,	zero,	Render.drawObjects.empty # Não desenhamos se ainda não foi escrito
+							lhu		a0,	16(s2)			# Coordenada X aqui
+							lb		a1,	20(s2)			# Coordenada Y aqui
+							lbu		a2,	22(s2)			# Altura do objeto
+							lbu		a3,	23(s2)			# Largura do objeto
+							lw		a4,	0(s2)			# Endereço do bitmap do objeto
+							lbu		a6,	24(s2)			# Direção do objeto
+							la		t0,	framePtr
+							lw		a5,	0(t0)			# Endereço do VGA
+							call		drawObject
+	Render.drawObjects.empty:			addi		s0,	s0,	1		# ++i
+							add		s2,	s2,	s3		# Object[] + 1
+							j		Render.drawObjects
+	Render.drawObjects.end:
+						
+						
+							
 ########################################
 #  _   _____________  ___ _____ _____ 
 # | | | | ___ \  _  \/ _ \_   _|  ___|
@@ -286,9 +355,33 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # | | | |  __/| | | |  _  || | |  __| 
 # | |_| | |   | |/ /| | | || | | |___ 
 #  \___/\_|   |___/ \_| |_/\_/ \____/ 
-########################################                                    							
-					
-						# Atualização dos offsets de leitura
+########################################        
+
+
+	############################
+	# MOVIMENTAÇÃO DOS OBJETOS #
+	############################
+						li		s0,	0				# s0 = i
+						li		s1,	6
+						la		s2,	object0				# Endereço do primeiro objeto
+						la		t0,	objectSize			
+						lbu		s3,	0(t0)				# Tamanho dos objetos, para cálculo de offset
+	Update.objectMovement:			beq		s0,	s1,	Update.objectMovement.end # Para cada um dos objetos
+						
+							lw		t0,	0(s2)
+							beq		t0,	zero,	Update.objectMovement.empty # Se estiver vazio, não pulamos para o próximo
+							la		t0,	scrollSpeed		# Velocidade de scroll vertical
+							lbu		t1,	0(t0)			# Pegamos para atualizar a posição de todos os objetos
+							lb		t2,	20(s2)			# Coordenada Y
+							add		t2,	t2,	t1
+							sb		t2,	20(s2)			# Atualizado													
+	Update.objectMovement.empty:			addi		s0,	s0,	1		# ++i
+							add		s2,	s2,	s3		# Object[] + 1
+							j		Update.objectMovement
+	Update.objectMovement.end:
+						
+
+                        			# Atualização dos offsets de leitura
 						la		t0,	pfReadStartOffset		# Pegando o offset atual
 						lbu		t1,	0(t0)
 						la		t2,	scrollSpeed			# Pegando velocidade de scroll
@@ -298,6 +391,15 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						remu		t1,	t1,	t4
 						sb		t1,	0(t0)				
 						
+##############################################################						
+#  _   _ _____  _   _  _____  ______ _     _____ _____ _____ 
+# | \ | |  _  || | | ||  _  | | ___ \ |   |  _  /  __ \  _  |
+# |  \| | | | || | | || | | | | |_/ / |   | | | | /  \/ | | |
+# | . ` | | | || | | || | | | | ___ \ |   | | | | |   | | | |
+# | |\  \ \_/ /\ \_/ /\ \_/ / | |_/ / |___\ \_/ / \__/\ \_/ /
+# \_| \_/\___/  \___/  \___/  \____/\_____/\___/ \____/\___/ 
+##############################################################                                                       
+                                                           
 						# Checagem para criação de bloco novo
 	Update.genNewBlock:			la		t0,	lineDrawnCounter
 						lbu		t1,	(t0)
@@ -321,7 +423,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
 						sb		t3,	0(t1)				# Salvando em Previous
 						sb		t2,	0(t0)				# Salvando o bloco novo em Current
-						# TODO: Incluir criação de objeto
+						# TODO: Incluir criação de objeto (ponte)
 						# Game level update
 						la		t1,	gameLevel			# Como geramos uma ponte, incrementamos o nível do jogo
 						lw		t0,	0(t1)				# O nível do jogo é usado na decisão de dificuldade
@@ -358,15 +460,55 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
 						la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
-						la		t2,	difficulty			# Endereço da dificuldade
+						la		t2,	difficulty			# Endereço do valor da dificuldade atual
 						lbu		t3,	0(t2)				# Pegamos o valor da dificuldade
 						lbu		t4,	0(t1)				# Pegando o offset
 						mul		t3,	t3,	t4			# Multiplicando dificuldade por offset para acharmos a posição na tabela
 						add		t0,	t0,	t3			# Encontramos o endereço da posição correspondente à dificuldade atual
 						lbu		a2,	0(t0)				# Quantidade de blocos máxima de terra, partindo da ponta
 						lbu		a3,	1(t0)				# Quantidade de blocos mínima de rio
-						lbu		a4,	2(t0)				# Largura mínima de abertura	
+						lbu		a4,	2(t0)				# Largura mínima de abertura
+						lbu		s0,	3(t0)				# Probabilidade	de fuel, para a próxima rotina
+						lbu		s1,	4(t0)				# Índice máximo dos inimigos, para a próxima rotina
 						call		createBlock
+						#############################
+						# Geração do próximo objeto #
+						#############################
+						la		t6,	objectPtrList			# Lista de ponteiros para objetos 0 a 6
+						la		t0,	objectListWriteIdx		# Endereço onde está o número do índice onde será salvo o objeto						
+						lbu		t1,	0(t0)				# Pegamos esse valor
+						li		t2,	4				# Offset de word
+						mul		t3,	t1,	t2			# Cálculo do offset
+						add		t6,	t6,	t3			# Aplicando offset
+						lw		a0,	0(t6)				# Endereço de escrita do objeto certo
+						mv		s7,	a0				# Salvando valor para a rotina placeObject
+						addi		a1,	a0,	24			# Número mágico que indica em que endereço está a variável de direção
+						la		a2,	objectFuel			# Endereço da tabela de objetos (o primeiro elemento é fuel)
+						la		t1,	objectSize
+						lbu		a3,	0(t1)				# Tamanho do objeto
+						mv		a4,	s0				# Probabilidade guardada antes de createBlock
+						mv		a5,	s1				# Outro número pego antes de createBlock
+						call		generateObject
+						
+						la		t0,	blockCurrent
+						lbu		a0,	0(t0)				# Id do bloco atual
+						la		t2,	lineDrawnCounter		
+						lbu		a2,	0(t2)				# Número de linhas desenhadas do novo bloco
+						li		a1,	20				# Até agora, todos os objetos criados aqui tem largura 20
+						call		placeObject
+						
+						addi		t0,	s7,	16			# Endereço de escrita salvo antes de generateObject, com offset..
+						sh		a0,	0(t0)				# ..para acharmos o endereço de objectPosX
+						addi		t1,	s7,	20			# Endereço de PosY
+						sh		a1,	0(t1)	
+						
+						la		t0,	objectListWriteIdx		# Atualizando
+						lbu		t1,	0(t0)
+						addi		t1,	t1,	1
+						li		t2,	6
+						remu		t1,	t1,	t2			# Índice dever estar sempre em [0,5]
+						sb		t1,	0(t0)				# Atualizado
+
 						# TODO: Incluir criação de objeto
 		
 	Update.write2Playfield:			la		a0,	playfield
@@ -1052,33 +1194,83 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 #############################
 # Gera um novo objeto				
 # a0: Endereço onde será salvo o objeto
-# a1: Offset Y ( quantidade de linhas do bloco que já foram desenhadas)
-# a2: ID do bloco
-
-# a5: Endereço do Table com os endereços das "formas" dos objetos
+# a1: Endereço onde será salva a direção do objeto
+# a2: Endereço do Table com os endereços das "formas" dos objetos
+# a3: Tamanho de um objeto (usado para cálculo de offset)
+# a4: Probabilidade de gerar combústivel
+# a5: Índice do tipos de inimigos possíveis
 ############################			
-
 # Vamos fazer assim:
 # 1) Rotina para decisão de qual objeto será criado				
 # Nessa rotina, decidimos se:
 # a) Vamos criar Fuel ou não, baseado na dificuldade.
 # b) Se não for Fuel, decidimos se é casa ou não, baseado na dificuldade
 # c) Decidir qual inimigo colocar
-# d) Decidir coordenada x ( + um offset ) onde colocar o objeto
+# d) Decidir coordenada x ( + um offset ) onde colocar o objeto (não)
 # e) Decidir direção
 
-# Possíveis argumentos
-# - Endereço de um Table que salva ponteiros para a seção de cada objeto (na qual estão seus atributos)
-# - Tamanho de um objeto, em bytes. Deve ser padrão
-# 
+generateObject:				addi		sp,	sp,	-28
+					sw		ra,	0(sp)
+					sw		s0,	4(sp)
+					sw		s1,	8(sp)
+					sw		s2,	12(sp)
+					sw		s3,	16(sp)
+					sw		s4,	20(sp)
+					sw		s5,	24(sp)
+				
+					mv		s0,	a0					# Salvamos os argumentos, porque a rotina chamará outra
+					mv		s1,	a1
+					mv		s2,	a2
+					mv		s3,	a3
+					mv		s4,	a4
+					mv		s5,	a5
+					
+					li		a7,	41					# Gerando o número aleatório para decidir se será combústivel
+					ecall
+					remu		a0,	a0,	s4				# Se o resultado for igual a 0, geramos combústivel
+					beq		a0,	zero,	generateObject.fuel
+					
+					ecall								# Não é combústivel, então geramos um novo número aleatório
+					remu		t0,	a0,	s5				# Usamos mod para colocar o número dentro do intervalo possível de inimigos
+					addi		t0,	t0,	1				# Para excluir o combústivel
+					mul		t0,	t0,	s3				# Cálculo do offset
+					add		t0,	t0,	s2				# Aplicando offset
+					mv		a0,	s0					# Destino
+					mv		a1,	t0					# Origem
+					mv		a2,	s3					# Tamanho em bytes
+					call		memcpy
+					
+					li		a7,	41					# Mais um número aleatório para decidir a direção do objeto
+					ecall
+					li		t0,	2
+					remu		t1,	a0,	t0				# Pertence a {0,1}
+					sb		t1,	0(s1)					# Salvando no endereço certo				
+					j		generateObject.end		
+					
+	generateObject.fuel:		mv		a0,	s0					# Copiamos os dados padrões do objeto para o endereço final
+					mv		a1,	s2
+					mv		a2,	s3
+					call		memcpy					
+					
+	generateObject.end:		lw		ra,	0(sp)
+					lw		s0,	4(sp)
+					lw		s1,	8(sp)
+					lw		s2,	12(sp)
+					lw		s3,	16(sp)
+					lw		s4,	20(sp)
+					lw		s5,	24(sp)
+					addi		sp,	sp,	28
+					ret
 
 #############################
 # Decide a coordenada X do objeto baseado no ID do bloco
 # Entradas:			
 # a0: ID do bloco
 # a1: Largura do objeto
+# a2: Offset Y ( quantidade de linhas do bloco que já foram desenhadas)
 # Saídas:
 # a0: Coordenada X escolhida
+# a1: Coordenada Y escolhida
 ############################
 
 placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
@@ -1108,7 +1300,28 @@ placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
 					mul		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20
 					add		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20 + 20
 					mv		a0,	t0					# Colocamos em a0 para retornar
+					li		a1,	-6					# Y inicial padrão para um objeto novo ("fora da tela")
+					add		a1,	a1,	a2				# Ajuste necessário, sem ele o objetos novos seram colocados em posições erradas
 					ret
+
+###############################
+# - Memcpy -
+# Entradas.
+# a0 : Endereço de destino ;; a1 : Endereço de origem ;; a2 : Tamanho em bytes
+# Saídas.
+# a0 : Endereço de destino
+###############################
+memcpy:					mv 		t0,	zero
+	memcpy.L1:			beq		t0,	a2,	memcpy.L1.end
+		
+						lbu		t1,	(a1)
+						sb		t1,	(a0)
+						addi		t0, 	t0,	1
+						addi		a0,	a0,	1
+						addi		a1,	a1,	1
+						j		memcpy.L1
+							
+	memcpy.L1.end:			ret
 
 																																		
 ##############################################################################################
@@ -1354,10 +1567,165 @@ DifficultyTable:	.byte 0, 7, 2, 4, 2 # Dificuldade 0
 	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
 	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
 	  	
-	  	
 	  		.byte 6, 1, 1, 12,4 # Doomguy_ouch.png
 
 
+#########################
+# Objetos
+#########################
+objectSize: 	.byte 32 # Tamanho de um objeto em bytes
+
+.align 2
+# 00 - Fuel
+objectFuel: 	.word Fuel_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Fuel_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half	.byte 0
+		.byte 0			# 18 objectIsAnim: .byte			
+		.byte 0			# 19 objectType: .byte	
+		.byte 0			# 20 objectYpos: .byte	
+		.byte 0			# 21 objectXspeed: .byte	
+		.byte 20		# 22 objectHeight: .byte	
+		.byte 20		# 23 objectWidth: .byte	
+		.byte 0			# 24 objectDirection: .byte	
+		.byte 0			# 25 objectAnimationCounter: .byte	
+		.byte 0			# 26 objectAnimationTime: .byte	
+		.byte 0			# 27 objectCollided: .byte # booleana de colisão	
+		.space 4
+
+.align 2
+# 01 - Helicopter
+objectHeli:	.word Heli_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Heli_f1			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 1				# 18 objectIsAnim: .byte			
+		.byte 1				# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 1				# 21 objectXspeed: .byte
+		.byte 20			# 22 objectHeight: .byte
+		.byte 20			# 23 objectWidth: .byte
+		.byte 0				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 2				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 02 - Ship
+objectShip:	.word Ship_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Ship_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 2				# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 1				# 21 objectXspeed: .byte
+		.byte 20			# 22 objectHeight: .byte
+		.byte 20			# 23 objectWidth: .byte
+		.byte 0				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 0				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 03 - Plane
+objectPlane: 	.word Plane_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Plane_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 3				# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 2				# 21 objectXspeed: .byte
+		.byte 20			# 22 objectHeight: .byte
+		.byte 20			# 23 objectWidth: .byte
+		.byte 1				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 0				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 04 - Bad fuel
+objectLeuf:	.word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 4				# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 2				# 21 objectXspeed: .byte
+		.byte 20			# 22 objectHeight: .byte
+		.byte 20			# 23 objectWidth: .byte
+		.byte 1				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 0				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 97 - Explosion
+objectExplo:    .word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 97			# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 0				# 21 objectXspeed: .byte
+		.byte 20			# 22 objectHeight: .byte
+		.byte 20			# 23 objectWidth: .byte
+		.byte 0				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 5				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 98 - Empty
+objectEmpty:	.word Leuf_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Leuf_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 98			# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 0				# 21 objectXspeed: .byte
+		.byte 1				# 22 objectHeight: .byte
+		.byte 1				# 23 objectWidth: .byte
+		.byte 0				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 0				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
+
+.align 2
+# 99 - Bridge
+objectBridge:	.word Bridg_f0			# 00 objectBitmapPtr0: .word # endereço do frame 0
+		.word Bridg_f0			# 04 objectBitmapPtr1: .word # endereço do frame 1
+		.word 0				# 08 objectCollision: .word # endereço da rotina de colisão
+		.word 0				# 12 objectAction: .word # endereço de rotina especial
+		.half 0				# 16 objectXpos: .half	.byte 0
+		.byte 0				# 18 objectIsAnim: .byte			
+		.byte 99			# 19 objectType: .byte
+		.byte 0				# 20 objectYpos: .byte
+		.byte 0				# 21 objectXspeed: .byte
+		.byte 12			# 22 objectHeight: .byte
+		.byte 40			# 23 objectWidth: .byte
+		.byte 0				# 24 objectDirection: .byte
+		.byte 0				# 25 objectAnimationCounter: .byte
+		.byte 0				# 26 objectAnimationTime: .byte
+		.byte 0				# 27 objectCollided: .byte # booleana de colisão
+		.space 4
 
 #######################
 # Includes
