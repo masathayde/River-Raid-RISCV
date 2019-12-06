@@ -7,6 +7,7 @@ x Geração de blocos levando a dificuldade em consideração
 
 - Colocar explosão no rom
 - Colocar "empty" no rom"
+- Diminuir tamanho de fuel e leuf
 
 x Adicionar transparência na rotina drawObject
 
@@ -14,7 +15,7 @@ x Fazer rotina de geração de objetos, levando em consideração a dificuldade
   x Primeiro decide se é combústivel ou inimigo
     x Depois, decide qual inimigo
 x Fazer desenho inicial padrão do mapa
-- Consertar placeObject
+x Consertar placeObject
 
 x Adicionar variáveis de vidas, combústivel e score
 - Adicionar variável de perda de combústivel por ciclo
@@ -39,7 +40,7 @@ x Rotina de tratamento de input
     - Objeto som tem: sequência de notas, tempo de cada nota, tempo total, prioridade 
 
 - Fazer animação dos objetos (só o helicóptero tem até agora)
-- Fazer movimentação
+x Fazer movimentação
 - Adicionar função de colisão à rotina drawObject
 - Fazer rotina de tratamento de colisão de objetos
   - Se for terra, trocar de direção (usar um pixel mais na ponta + velocidade X, ver se é terra)

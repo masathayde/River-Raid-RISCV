@@ -375,14 +375,30 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							lbu		t1,	0(t0)			# Pegamos para atualizar a posição de todos os objetos
 							lh		t2,	18(s2)			# Coordenada Y
 							add		t2,	t2,	t1
-							sh		t2,	18(s2)			# Atualizado													
+							sh		t2,	18(s2)			# Atualizado
+							
+							lbu		a2,	22(s2)			# Velocidade X
+							beq		a2,	zero,	Update.objectMovement.empty # Se velocidade for nula, ignoramos a rotina de movimentação no eixo X
+							lh		a0,	16(s2)			# Coordenada X
+							lh		a1,	18(s2)			# Coordenada Y
+							lbu		a3,	25(s2)			# Direção
+							lbu		a4,	24(s2)			# Largura
+							la		t0,	framePtr
+							lw		a5,	0(t0)			# Endereço do VGA
+							lbu		a6,	20(s2)			# Tipo do objeto
+							call		moveObjectX
+							sh		a0,	16(s2)			# Novo X
+							sb		a1,	25(s2)			# Nova direção
+																																																									
+																																																																																																																																																																																					
 	Update.objectMovement.empty:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
 							j		Update.objectMovement
 	Update.objectMovement.end:
 						
-
-                        			# Atualização dos offsets de leitura
+	######################################
+        # ATUALIZAÇÃO DOS OFFSETS DE LEITURA #
+	######################################
 						la		t0,	pfReadStartOffset		# Pegando o offset atual
 						lbu		t1,	0(t0)
 						la		t2,	scrollSpeed			# Pegando velocidade de scroll
@@ -424,7 +440,35 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
 						sb		t3,	0(t1)				# Salvando em Previous
 						sb		t2,	0(t0)				# Salvando o bloco novo em Current
-						# TODO: Incluir criação de objeto (ponte)
+						
+						# Criando ponte
+						# Como a ponte fica sempre na mesma posição, não usaremos rotinas aleatórias
+						# Em vez disso, usaremos os valores fixos da memória, com um pequeno ajuste em Y
+						# Então precisamos de um simples memcpy
+						la		t6,	objectPtrList			# Lista de ponteiros para objetos 0 a 6
+						la		t0,	objectListWriteIdx		# Endereço onde está o número do índice onde será salvo o objeto						
+						lbu		t1,	0(t0)				# Pegamos esse valor
+						li		t2,	4				# Offset de word
+						mul		t3,	t1,	t2			# Cálculo do offset
+						add		t6,	t6,	t3			# Aplicando offset
+						lw		a0,	0(t6)				# Endereço de escrita do objeto certo
+						mv		s0,	a0				# Salvando para depois
+						la		t0,	objectFuel			# Endereço da tabela
+						la		t1,	objectBridgeOffset		# Offset da ponte
+						lbu		t2,	0(t1)				# Carregando esse valor
+						la		t3,	objectSize
+						lbu		t4,	0(t3)				# Tamanho do objeto
+						mul		t2,	t4,	t2			# Cálculo do offset
+						add		a1,	t0,	t2			# Aplicando offset
+						mv		a2,	t4				# Colocando quantidade de bytes que vamos copiar
+						call		memcpy
+						la		t0,	lineDrawnCounter
+						lbu		t1, 	0(t0)				# Pegando valor de linhas escritas do bloco novo para ajustar coordenada Y da ponte
+						lh		t2,	18(s0)				# Pegando coordenada Y
+						add		t2,	t2,	t1			# Ajustando Y
+						sh		t2,	18(s0)
+						j		Update.objectListUpdate
+						
 						# Game level update
 						la		t1,	gameLevel			# Como geramos uma ponte, incrementamos o nível do jogo
 						lw		t0,	0(t1)				# O nível do jogo é usado na decisão de dificuldade
@@ -453,8 +497,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
 						sb		t3,	0(t1)				# Salvando em Previous
 						sb		t2,	0(t0)				# Salvando o bloco novo em Current
-						# TODO: Incluir criação de objeto
-						j		Update.write2Playfield
+						j		Update.genObject			# Seguimos para a criação do objeto
 						
 	Update.normalBlock:			la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
@@ -474,7 +517,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						#############################
 						# Geração do próximo objeto #
 						#############################
-						la		t6,	objectPtrList			# Lista de ponteiros para objetos 0 a 6
+	Update.genObject:			la		t6,	objectPtrList			# Lista de ponteiros para objetos 0 a 6
 						la		t0,	objectListWriteIdx		# Endereço onde está o número do índice onde será salvo o objeto						
 						lbu		t1,	0(t0)				# Pegamos esse valor
 						li		t2,	4				# Offset de word
@@ -502,14 +545,13 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		t1,	s7,	18			# Endereço de PosY
 						sh		a1,	0(t1)	
 						
-						la		t0,	objectListWriteIdx		# Atualizando
+	Update.objectListUpdate:		la		t0,	objectListWriteIdx		# Atualizando índice para usarmos o próximo espaço no vetor de objetos
 						lbu		t1,	0(t0)
 						addi		t1,	t1,	1
 						li		t2,	6
 						remu		t1,	t1,	t2			# Índice dever estar sempre em [0,6]
 						sb		t1,	0(t0)				# Atualizado
-
-						# TODO: Incluir criação de objeto
+						
 		
 	Update.write2Playfield:			la		a0,	playfield
 						la		t0,	pfWriteOffset
@@ -535,35 +577,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 																		
 	NoNewBlock:				nop
-						
-						
-#88888888888 8888888888 .d8888b. 88888888888 8888888888 
-#    888     888       d88P  Y88b    888     888        
-#    888     888       Y88b.         888     888        
-#    888     8888888    "Y888b.      888     8888888    
-#    888     888           "Y88b.    888     888        
-#    888     888             "888    888     888        
-#    888     888       Y88b  d88P    888     888        
-#    888     8888888888 "Y8888P"     888     8888888888  Fonte: colossal
-                                                       
-                                                                                                         				
-						la		t0, testObjY
-						lw		t1, 0(t0)
-						addi		t1, t1,	4
-						sw		t1, 0(t0)
 	
-						li		a0, 120
-						la		t0, testObjY
-						lw		a1, 0(t0)
-						#li		a1, 140
-						li		a2, 20
-						li		a3, 20
-						la		a4, Plyr_1
-						la		t0, framePtr
-						lw		a5, 0(t0)
-						li		a6, 0
-						call	drawObject
-						
+###############################################################################################						
 # ______      _   _                       _           ___                       _            
 # | ___ \    | | (_)                     | |         |_  |                     | |           
 # | |_/ /___ | |_ _ _ __   __ _ ___    __| | ___       | | ___   __ _  __ _  __| | ___  _ __ 
@@ -572,7 +587,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # \_| \_\___/ \__|_|_| |_|\__,_|___/  \__,_|\___/  \____/ \___/ \__, |\__,_|\__,_|\___/|_|   
 #                                                                __/ |                       
 #                                                               |___/                        
-
+###############################################################################################
 	#### RECEBIMENTO DE INPUT ####
 						li		a0,	0xFF200000
 						li		a1,	0xFF200004
@@ -1303,6 +1318,64 @@ placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
 					add		a1,	a1,	a2				# Ajuste necessário, sem ele o objetos novos seram colocados em posições erradas
 					ret
 
+#############################
+# Atualiza a coordenada X do objeto
+# Entradas:			
+# a0: Coordenada X
+# a1: Coordenada Y
+# a2: Velocidade X
+# a3: Direção do objeto
+# a4: Largura do objeto
+# a5: Endereço do VGA
+# a6: Tipo do objeto
+# Saídas:
+# a0: Nova coordenada X
+# a1: Nova direção
+############################
+# Primeiro calculamos se o movimento é válido, depois movemos
+moveObjectX:				blt		a1,	zero,	moveObjectX.noUpdate		# Se Y < 0, não movimentamos o objeto
+					li		t0,	320					# Calculando o endereço no VGA
+					mul		t0,	a1,	t0				# Y*320
+					add		t0,	t0,	a0				# t0 = Y*320 + X
+					add		t0,	t0,	a5				# VGAStart + t0 é o endereço
+					li		t1,	3					# Tipo de objeto do avião
+					beq		a6,	t1,	moveObjectX.noBankColl		# Tipo especial de movimento, não colide com a terra
+					
+					# Detecção de terra
+					# O pixel usado para detectar colisão depende da direção
+					bne		a3,	zero,	moveObjectX.faceLeft		# Se for direita, continuamos aqui
+					add		t1,	t0,	a4				# Pegamos o pixel mais à direita
+					add		t1,	t1,	a2				# Somamos à velocidade
+					lbu		t3,	0(t1)					# Pegamos a cor
+					li		t2,	BANK_COLOR				# Cor da terra
+					beq		t3,	t2,	moveObjectX.changeDirection	# Se for terra mudamos de direção
+					add		a0,	a0,	a2				# Não é terra, então é uma posição válida
+					li		a1,	0					# Direção é a mesma
+					j		moveObjectX.end
+					
+	moveObjectX.faceLeft:		sub		t1,	t0,	a2				# Movimento para a esquerda, então a velocidade é negativa, e usa-se o pixel mais à esquerda
+					li		t2,	BANK_COLOR
+					lbu		t3,	0(t1)					# Pegamos a cor
+					beq		t3,	t2,	moveObjectX.changeDirection	# Teste igual ao caso da direita
+					sub		a0,	a0,	a2				# Movimento válido para a esquerda
+					li		a1,	1
+					j		moveObjectX.end
+					
+	moveObjectX.noBankColl:		li		t1,	-2					# Para o cálculo da velocidade
+					mul		t1,	t1,	a3				# Se for direita, a3 = 0 e velX > 0. Se a3 = 1, velX < 0
+					addi		t1,	t1,	1				# Fórmula : (-2*a3 + 1)*velX
+					mul		t1,	t1,	a2				# 					
+					add		a0,	a0,	t1				# Atualizando posição X
+					bge		a0,	zero,	moveObjectX.nBCnoAdjust		# Ajuste, para caso X fique negativo
+					li		a0,	300					# Fazemos um wraparound, colocando X na outra ponta da tela				
+	moveObjectX.nBCnoAdjust:	j		moveObjectX.noUpdate				# Mantém a direção
+	
+	moveObjectX.changeDirection:	xori		a3,	a3,	1				# Invertemos a direção e não atualizamos a posição X
+	moveObjectX.noUpdate:		mv		a1,	a3					# Retornamos a mesma direção		
+	
+	moveObjectX.end:		ret
+
+
 ###############################
 # - Memcpy -
 # Entradas.
@@ -1494,19 +1567,19 @@ Leuf_f0: .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF,
 	 .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL
 	 
-# Bridge (40w 12h)
-Bridg_f0:.byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG 
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+# Bridge (80w 12h)
+Bridg_f0:.byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG 
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
+	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
 	 
 	 
 # Player
@@ -1603,7 +1676,7 @@ objectHeli:	.word Heli_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 1			# 20 objectType: .byte	
 		.byte 1			# 21 objectIsAnim: .byte
-		.byte 1			# 22 objectXspeed: .byte	
+		.byte 3			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -1622,7 +1695,7 @@ objectShip:	.word Ship_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 2			# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
-		.byte 1			# 22 objectXspeed: .byte	
+		.byte 2			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -1641,7 +1714,7 @@ objectPlane: 	.word Plane_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 3			# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
-		.byte 2			# 22 objectXspeed: .byte	
+		.byte 12		# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -1713,18 +1786,20 @@ objectBridge:	.word Bridg_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.word Bridg_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
 		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
 		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
+		.half 120		# 16 objectXpos: .half
+		.half -6		# 18 objectYpos: .half			
 		.byte 99		# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
 		.byte 0			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
+		.byte 12		# 23 objectHeight: .byte	
+		.byte 80		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
 		.byte 0			# 26 objectAnimationCounter: .byte	
 		.byte 0			# 27 objectAnimationTime: .byte	
 		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
 		.space 3
+
+objectBridgeOffset: .byte 7
 
 #######################
 # Includes
