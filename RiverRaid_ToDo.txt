@@ -20,16 +20,16 @@ x Consertar placeObject
 x Adicionar variáveis de vidas, combústivel e score
 - Adicionar variável de perda de combústivel por ciclo
 x Adicionar variável de número máximo de tiros
-- Falta criação de tiro
-- Adicionar vetor de tiros
-- Adicionar rotina de colisão de tiros
+x Falta criação de tiro
+x Adicionar vetor de tiros
+x Adicionar rotina de colisão de tiros
 
 x Desenhar player na tela (juntar com rotina de checagem de colisão)
 x Quantos tipos de colisão? (4)
-  - Checar se é rio ou explosão. Se for, não fazer nada.
-    - Se não for, checar se é combústivel
-      - Se não for, checar se é bad fuel
-        - Se não for, então é destruição
+  x Checar se é rio ou explosão. Se for, não fazer nada.
+    x Se não for, checar se é combústivel
+      x Se não for, checar se é bad fuel
+        x Se não for, então é destruição
 
 x Fazer movimentação do jogador
 x Rotina de tratamento de input

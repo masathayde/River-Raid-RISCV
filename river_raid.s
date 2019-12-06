@@ -75,11 +75,11 @@
 	scrollSpeedSlow: .byte 1 # Velocidade devagar
 
 	blockWriteOffset: .byte 0
-	blockCurrent: .byte 0x07									# Cada parte de uma dos blocos visíveis é representada por um byte
+	blockCurrent: .byte 0x07 # Cada parte de uma dos blocos visíveis é representada por um byte
 	blockPrevious: .byte 0
 	blockCounter: .byte 0 # Número de blocos criados
 	
-	lineDrawnCounter: .byte 0									# Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
+	lineDrawnCounter: .byte 0 # Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
 
 ######################################################################################################################	
 #  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ______ _____     ___  _____ _____   ___ ______ ___________ 
@@ -100,6 +100,7 @@
 	playerShotCount: .byte 0 # Contador de tiros
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
 	playerSpeedX: .byte 4 # Velocidade em pixels/frame
+	playerShotCD: .byte 0 # Número de frames a esperar para atirar de novo
                                                                                                       
 ##########################################################                                                                                                                                                                                                                
 # ______ _       _____   _______ _____ _____ _    ______ 
@@ -444,6 +445,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 							lbu		t0,	11(s1)			# Verificamos se o tiro existe
 							beq		t0,	x0,	Update.shotMovement.L.next # Se não existir, pulamos para o próximo
+							addi		a0,	s1,	12		# Endereço da booleana de colisão
+							addi		a1,	s1,	11		# Endereço da booleana de existência
+							la		a2,	playerShotCount		# Endereço com o número de tiros
+							call		shotColHandler			# Tratamento de colisão							
 							mv		a0,	s1
 							call		moveShot					
 	Update.shotMovement.L.next:			addi		s0,	s0,	1		# i++
@@ -735,11 +740,32 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						li		t1,	0xFF20021C
 						sw		t1, 0(t0)
 						#call		getInputStick
-						
-						
-
-	#### DESENHO E COLISÃO ####
-						la		t0,	playerPosX			# Carregando X do jogador
+	
+	######################
+	# ESPERA PARA ATIRAR #				
+	######################		
+	
+						la		s0,	shotCreate			# Endereço da variável de criação de tiro
+						la		s1,	playerShotCD			# Endereço do contador de espera
+						lbu		t0,	0(s0)				# Vemos se há tiro para criar
+						lb		t1,	0(s1)				# Pegamos o contador
+						beq		t0,	zero,	Player.CD.end		# Se for 1, temos que avaliar se o tiro pode ser criado ou se precisamos esperar
+						beq		t1,	zero,	Player.CD.addCD		# Se o contador de espera estiver em zero, sem problemas		
+						li		t0,	0
+						sb		t0,	0(s0)				# Se não, cancelamos o tiro
+						j		Player.CD.end
+	Player.CD.addCD:			la		s2,	shotDelay			# Houve tiro, então temos que começar o período de espera
+						lbu		t1,	0(s2)				# Pegamos o valor de espera da ROM													
+						j		Player.CD.end.noAdjust																	
+	Player.CD.end:				addi		t1,	t1,	-1			# Passou-se um frame, então diminuimos em 1
+						bge		t1,	zero,	Player.CD.end.noAdjust	# Se for maior que zero, está OK
+						li		t1,	0				# Se não, ajustamos
+	Player.CD.end.noAdjust:			sb		t1,	0(s1)				# Guardamos o valor
+	
+	#####################
+	# DESENHO E COLISÃO #
+	#####################
+	Player.render:				la		t0,	playerPosX			# Carregando X do jogador
 						lhu		a0,	0(t0)
 						la		t0,	playerPosY			# Carregando Y do jogador
 						lbu		a1,	0(t0)
@@ -1624,8 +1650,22 @@ drawShot:				addi		sp,	sp,	-4
 					addi		sp,	sp,	4	
 					ret				
 
-
-
+#############################
+# Tratamento de colisão de um tiro				
+# a0: Endereço da booleana de colisão
+# a1: Endereço da booleana de existência
+# a2: Endereço do número de tiros
+############################
+shotColHandler:				lbu		t0,	0(a0)					# Pegamos a booleana de colisão
+					beq		t0,	zero,	shotColHandler.end		# Se for 0, não há colisão
+					li		t0,	0
+					sb		t0,	0(a1)					# Mudamos a booleana de existência, assim o tiro não será mais desenhado
+					lb		t1,	0(a2)					# Pegamos o número de tiros existente
+					addi		t1,	t1,	-1				# Atualizamos
+					bge		t1,	zero,	shotColHandler.store		# Se for maior que zero, está adequado
+					li		t1,	0					# Se for menor, corrigimos
+	shotColHandler.store:		sb		t1,	0(a2)
+	shotColHandler.end:		ret
 
 ###############################
 # - Memcpy -
@@ -2055,13 +2095,13 @@ objectBridgeOffset: .byte 7
 # Tiro
 shotSize: 	.byte 20		# Tamanho de um tiro em bytes
 shotMax:	.byte 20		# Número máximo de tiros
-shotDelay:	.byte 6			# Número de frames que é preciso esperar para atirar de novo
-shotXoffset:	.byte 10		# Aplicado para que o tiro saia do centro do player
+shotDelay:	.byte 2			# Número de frames que é preciso esperar para atirar de novo
+shotXoffset:	.byte 9			# Aplicado para que o tiro saia do centro do player
 .align 2
 shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 		.half 0			# 04 Coordenada X
 		.half 145		# 06 Coordenada Y
-		.byte -8		# 08 Velocidade Y (Negativa, porque vai para o topo)
+		.byte -12		# 08 Velocidade Y (Negativa, porque vai para o topo)
 		.byte 6			# 09 Altura da imagem
 		.byte 2			# 10 Largura da imagem
 		.byte 1			# 11 Booleana de existência
