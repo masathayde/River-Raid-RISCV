@@ -27,7 +27,7 @@
 #	li a0, 127		# define a nota
 #	li a1, 5000		# define a duração da nota em ms
 #	li a2, 122		# define o instrumento
-#	li a3, 127		# define o volume
+#	li a3, 67		# define o volume
 #	li a7, 33		# define o syscall
 #	ecall			# toca a nota
 
@@ -58,7 +58,7 @@
 #som de recarga do combustivel
 	li a0, 50		# define a nota
 	li a1, 1500		# define a duração da nota em ms
-	li a2, 124		# define o instrumento
+	li a2, 1		# define o instrumento
 	li a3, 127		# define o volume
 	li a7, 33		# define o syscall
 	ecall			# toca a nota	

@@ -65,6 +65,8 @@
 	difficInterv: .byte 1				# Número de seções para que haja aumento de dificuldade
 	
 	
+	nextSound: .byte 0				# Variável que controla qual som será tocado a seguir
+	
 	
 	
 	frameToShow: .byte 1 # Frame do VGA selecionado										
@@ -464,6 +466,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						sb		t2,	0(t0)				# Gravando no endereço
 						la		t1,	shotCreate
 						sb		zero,	0(t1)				# Retornamos a booleana de criação para 0
+						
+						# Som - toda vez que criar um tiro, pedir para tocar o som
+						li		a0,	1
+						call		soundSelect				# Tocamos o som de tiro						
 									
 						
 	Update.shotMovement:			li		s0,	0				# i = 0
@@ -546,10 +552,15 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							la		t0,	objectSize		# Tamanho do objeto
 							lbu		a2,	0(t0)
 							addi		a3,	s2,	28		# Endereço da booleana de colisão
+							lbu		s5,	28(s2)			# Armazenamos aqui para usar no teste de criação de som
 							addi		a4,	s2,	16		# Endereço da posição X
 							addi		a5,	s2,	18		# Endereço da posição Y
 							addi		a6,	s2,	20		# Endereço do tipo de objeto
-							call		objectColHandler			
+							call		objectColHandler
+							beq		s5,	zero,	Update.objectUpdate.nope # Se houver colisão, tocamos som
+							li		a0,	2
+							call		soundSelect							
+										
 							
 	Update.objectUpdate.nope:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
@@ -781,7 +792,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	Arg8
 						la		t1,	scrollSpeed
 						sw		t1,	0(t0)
-						la		t0, Arg9
+						la		t0, 	Arg9
 						li		t1,	0xFF20021C
 						sw		t1, 0(t0)
 						#call		getInputStick
@@ -823,8 +834,33 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	playerDirection			# Carregando direção
 						lbu		a6,	0(t0)
 						la		a7,	playerCollision			# Endereço onde será salvo o byte de colisão
-						call		drawPlayerChkC												
-																		
+						call		drawPlayerChkC
+						
+						la		t0,	playerCollision
+						lbu		a0,	0(t0)				# Booleana de colisão
+						la		a1,	playerFuel			# Endereço do valor de combústivel atual
+						call		playerColHandler
+						beq		a0,	t0,	Player.crash		# Se houver colisão, vamos para a rotina de perda de vida
+	Player.crash:				mv		a0,	a1
+						call		soundSelect				# Rotina decide se o som irá tocar				
+																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			
+##########################																		
+#  _____  ________  ___
+# /  ___||  _  |  \/  |
+# \ `--. | | | | .  . |
+#  `--. \| | | | |\/| |
+# /\__/ /\ \_/ / |  | |
+# \____/  \___/\_|  |_/
+##########################                   
+                     				la		t0,	nextSound			# Endereço de seleção de som
+                     				lbu		t1,	0(t0)				# Pegamos o som
+						beq		t1,	zero,	Sound.end		# Se for zero, não tocamos nada
+						la		a0,	Sound1				# Primeiro som da tabela
+						mv		a1,	t1
+						call		playSound
+						
+	Sound.end:				la		t0,	nextSound
+						sb		zero,	0(t0)				# Ao final de cada frame, resetamos o valor de soundSelect			
 
 #  _____                         _       ______                        
 # |_   _|                       | |      |  ___|                       
@@ -1267,7 +1303,48 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 					addi		sp,	sp,	4
 					ret
 
+###########################################
+# Tratamento de colisão do jogador			
+# a0: Valor da colisão
+# a1: Endereço da variável de combústivel
+# Saídas:
+# a0: Booleana que diz se houve crash
+# a1: Som para tocar
+###########################################
+playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisão, saímos
+					li		t0,	1
+					bne		a0,	t0,	playerColHandler.test2		# Colisão fatal
+					li		a0,	1					# Booleana de crash
+					li		a1,	1					# Som 1
+					j		playerColHandler.end
+					
+	playerColHandler.test2:		li		t0,	2
+					bne		a0,	t0,	playerColHandler.test3		# Colisão com combústivel
+					
+					la		t0,	fuelChargeRate				# Endereço de constante de recarga
+					lbu		t1,	0(t0)
+					lbu		t2,	0(a1)					# Nível de combústivel atual
+					add		t2,	t2,	t1				# Enchemos o tanque um pouco
+					sb		t2,	0(a1)					# Salvando
+					li		a0,	0					# Não é crash
+					li		a1,	3					# Som 3	
+					j		playerColHandler.end
+					
+	playerColHandler.test3:		li		t0,	3
+					bne		a0,	t0,	playerColHandler.noCol		# Colisão com bad fuel
+					la		t0,	fuelChargeRate				# Endereço de constante de recarga
+					lbu		t1,	0(t0)
+					lb		t2,	0(a1)					# Nível de combústivel atual
+					sub		t2,	t2,	t1				# Drenamos o tanque um pouco
+					sb		t2,	0(a1)					# Salvando
+					li		a0,	0					# Não é crash
+					li		a1,	4					# Som 4
+					j		playerColHandler.end
 	
+	playerColHandler.noCol:		li		a0,	0
+					li		a1,	0					# Não tocamos nenhum som	
+	playerColHandler.end:		ret
+
 #############################################
 # Recebimento de input (RARS)
 # a0: Endereço do controle do KB
@@ -1807,8 +1884,37 @@ stopExplosion:				addi		sp,	sp,	-4
 					addi		sp,	sp,	4
 					ret
 					
-					
-					
+#############################
+# Toca um som tirado da tabela			
+# a0: Endereço da tabela
+# a1: Número do som
+############################
+# Cada som é composto por 4 words, então o offset é 16 bytes
+playSound:				beq		a1,	zero,	playSound.end			# Se for zero, nenhum som novo é tocado
+					addi		a1,	a1,	-1				# Som 1 -> Offset zero, porque soundSelect em zero significa nenhum som
+					li		t0,	16
+					mul		t0,	t0,	a1				# Cálculo do offset
+					add		t1,	a0,	t0				# Aplicando offset
+					lw		a0,	0(t1)					# Nota
+					lw		a1,	4(t1)					# Duração
+					lw		a2,	8(t1)					# Instrumento
+					lw		a3,	12(t1)					# Volume
+					li		a7,	31					# ecall MidiOUT
+					ecall
+	playSound.end:			ret
+	
+#############################
+# Seleciona qual som tem maior prioridade no frame			
+# a0: Número do som a avaliar
+############################
+soundSelect:				beq		a0,	zero,	soundSelect.nop			# Se o novo som == 0, ignora-se a rotina
+					la		t0,	nextSound				# Endereço onde está o som
+					lbu		t1,	0(t0)					# Pega o valor
+					beq		t1,	zero,	soundSelect.newSound		# Se o som atual for 0, só troca o valor de nextSound
+					ble		a0,	t1,	soundSelect.newSound		# Se o número do som for menor, ele tem prioridade	
+					mv		a0,	t1					# Mantemos o som anterior
+	soundSelect.newSound:		sb		a0,	0(t0)					# Novo som colocado
+	soundSelect.nop:		ret
 ###############################
 # - Memcpy -
 # Entradas.
@@ -2088,13 +2194,18 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 # Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
 ########################
 DifficultyOffset:	.byte 5
-DifficultyTable:	.byte 6, 1, 1, 12, 4 # Dificuldade 0
+DifficultyTable:	.byte 1, 7, 2, 5, 2 # Dificuldade 0
 	  		.byte 2, 5, 2, 4, 2 # Dificuldade 1
 	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
 	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
 	  	
 	  		.byte 6, 1, 1, 12,4 # Doomguy_ouch.png
 
+####################
+# Constantes
+####################
+fuelChargeRate:		.byte 5
+fuelLossRate:		.byte 2
 
 #########################
 # Objetos
@@ -2258,14 +2369,14 @@ objectBridgeOffset: .byte 7
 # Tiro
 shotSize: 	.byte 20		# Tamanho de um tiro em bytes
 shotMax:	.byte 20		# Número máximo de tiros
-shotDelay:	.byte 2			# Número de frames que é preciso esperar para atirar de novo
+shotDelay:	.byte 1			# Número de frames que é preciso esperar para atirar de novo
 shotXoffset:	.byte 9			# Aplicado para que o tiro saia do centro do player
 .align 2
 shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 		.half 0			# 04 Coordenada X
 		.half 145		# 06 Coordenada Y
 		.byte -12		# 08 Velocidade Y (Negativa, porque vai para o topo)
-		.byte 6			# 09 Altura da imagem
+		.byte 9			# 09 Altura da imagem
 		.byte 2			# 10 Largura da imagem
 		.byte 1			# 11 Booleana de existência
 		.byte 0			# 12 Booleana de colisão		
@@ -2275,8 +2386,41 @@ Shot_f0:	.byte SHOT, SHOT
 		.byte SHOT, SHOT 
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT
 		.byte SHOT, SHOT	
-	
+
+#########################
+# Sons
+# By Matheus Guaraci
+#########################
+# Tiro
+.align 2
+Sound1:		.word 16		# 00 Nota
+		.word 500		# 01 Duração em ms
+		.word 123		# 02 Instrumento
+		.word 127		# 03 Volume
+		
+		
+# Objeto atingido
+SoundHit:	.word 39		# 00 Nota
+		.word 800		# 01 Duração em ms
+		.word 127		# 02 Instrumento
+		.word 127		# 03 Volume
+		
+# Recarga
+SoundRefuel:	.word 75		# 00 Nota
+		.word 150		# 01 Duração em ms
+		.word 105		# 02 Instrumento
+		.word 67		# 03 Volume
+		
+# Drenagem
+SoundDrain:	.word 30		# 00 Nota
+		.word 200		# 01 Duração em ms
+		.word 105		# 02 Instrumento
+		.word 67		# 03 Volume
+
 
 #######################
 # Includes

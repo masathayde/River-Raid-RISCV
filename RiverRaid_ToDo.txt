@@ -46,10 +46,10 @@ x Fazer rotina de tratamento de colisão de objetos
     x Se for míssel, trocar por um objeto explosão
 
 
-- Fazer rotina de reprodução de som
-  - Variável de quanto tempo ainda falta para acabar a nota
-    - Quando chega ao valor, passa para a próxima nota
-  - Variável de quanto tempo ainda falta para acabar o som todo
+x Fazer rotina de reprodução de som
+  = Variável de quanto tempo ainda falta para acabar a nota
+    = Quando chega ao valor, passa para a próxima nota
+  = Variável de quanto tempo ainda falta para acabar o som todo
 
 - Printar combústivel na tela
 - Printar vidas na tela
