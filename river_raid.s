@@ -359,18 +359,22 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 ########################################        
 
 
-	############################
-	# MOVIMENTAÇÃO DOS OBJETOS #
-	############################
+	###########################
+	# ATUALIZAÇÃO DOS OBJETOS #
+	###########################
 						li		s0,	0				# s0 = i
 						li		s1,	6
 						la		s2,	object0				# Endereço do primeiro objeto
 						la		t0,	objectSize			
 						lbu		s3,	0(t0)				# Tamanho dos objetos, para cálculo de offset
-	Update.objectMovement:			beq		s0,	s1,	Update.objectMovement.end # Para cada um dos objetos
+	Update.objectUpdate:			beq		s0,	s1,	Update.objectUpdate.end # Para cada um dos objetos
+	
+						#############
+						# MOVIMENTO #
+						#############
 						
 							lw		t0,	0(s2)
-							beq		t0,	zero,	Update.objectMovement.empty # Se estiver vazio, não pulamos para o próximo
+							beq		t0,	zero,	Update.objectUpdate.nope # Se estiver vazio, não pulamos para o próximo
 							la		t0,	scrollSpeed		# Velocidade de scroll vertical
 							lbu		t1,	0(t0)			# Pegamos para atualizar a posição de todos os objetos
 							lh		t2,	18(s2)			# Coordenada Y
@@ -378,7 +382,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							sh		t2,	18(s2)			# Atualizado
 							
 							lbu		a2,	22(s2)			# Velocidade X
-							beq		a2,	zero,	Update.objectMovement.empty # Se velocidade for nula, ignoramos a rotina de movimentação no eixo X
+							beq		a2,	zero,	Update.objectUpdate.animate # Se velocidade for nula, ignoramos a rotina de movimentação no eixo X
 							lh		a0,	16(s2)			# Coordenada X
 							lh		a1,	18(s2)			# Coordenada Y
 							lbu		a3,	25(s2)			# Direção
@@ -389,12 +393,23 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							call		moveObjectX
 							sh		a0,	16(s2)			# Novo X
 							sb		a1,	25(s2)			# Nova direção
-																																																									
-																																																																																																																																																																																					
-	Update.objectMovement.empty:			addi		s0,	s0,	1		# ++i
+							
+						############
+						# ANIMAÇÃO #
+						############
+							
+	Update.objectUpdate.animate:			mv		a0,	s2			# Endereço do frame 0
+							addi		a1,	s2,	4		# Endereço do frame 1
+							lbu		a2,	26(s2)			# Contador de frames
+							lbu		a3,	27(s2)			# Número limite do contador
+							call		animateObject
+							sb		a2,	26(s2)			# Atualizando o contador	
+	
+	
+	Update.objectUpdate.nope:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
-							j		Update.objectMovement
-	Update.objectMovement.end:
+							j		Update.objectUpdate
+	Update.objectUpdate.end:
 						
 	######################################
         # ATUALIZAÇÃO DOS OFFSETS DE LEITURA #
@@ -1375,6 +1390,27 @@ moveObjectX:				blt		a1,	zero,	moveObjectX.noUpdate		# Se Y < 0, não movimentamo
 	
 	moveObjectX.end:		ret
 
+#############################
+# Troca o frame de animação de um objeto
+# Entradas:			
+# a0: Endereço do frame 0
+# a1: Endereço do frame 1
+# a2: Contador de frames para troca
+# a3: Número para a troca
+# Saídas:
+# a2: Contador de frames atualizado
+# Também altera o conteúdo dos endereços a0 e a1
+############################
+
+animateObject:				beq		a3,	zero,	animateObject.end			# Se não for um objeto animado, não é feita a rotina
+					addi		a2,	a2,	1
+					bne		a2,	a3,	animateObject.end			# Se a2 != a3, ainda não é hora de atualizar o frame
+					lw		t0,	0(a0)						# Salvamos o endereço do frame anterior em t0 temporariamente
+					lw		t1,	0(a1)						# Pegamos o endereço do frame novo para sobreescrever
+					sw		t1,	0(a0)						# Trocado
+					sw		t0,	0(a1)						# Trocado também
+					li		a2,	0						# Resetamos o contador						
+	animateObject.end:		ret
 
 ###############################
 # - Memcpy -
@@ -1681,7 +1717,7 @@ objectHeli:	.word Heli_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
 		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 5			# 27 objectAnimationTime: .byte	
+		.byte 1			# 27 objectAnimationTime: .byte	
 		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
 		.space 3
 

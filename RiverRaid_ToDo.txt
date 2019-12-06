@@ -39,7 +39,7 @@ x Rotina de tratamento de input
   - Produzir objeto som
     - Objeto som tem: sequência de notas, tempo de cada nota, tempo total, prioridade 
 
-- Fazer animação dos objetos (só o helicóptero tem até agora)
+x Fazer animação dos objetos (só o helicóptero tem até agora)
 x Fazer movimentação
 - Adicionar função de colisão à rotina drawObject
 - Fazer rotina de tratamento de colisão de objetos
