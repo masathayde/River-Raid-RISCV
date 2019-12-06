@@ -20,6 +20,7 @@ x Consertar placeObject
 x Adicionar variáveis de vidas, combústivel e score
 - Adicionar variável de perda de combústivel por ciclo
 x Adicionar variável de número máximo de tiros
+- Falta criação de tiro
 - Adicionar vetor de tiros
 - Adicionar rotina de colisão de tiros
 
@@ -32,7 +33,6 @@ x Quantos tipos de colisão? (4)
 
 x Fazer movimentação do jogador
 x Rotina de tratamento de input
-- Falta criação de tiro
 
 - Fazer rotina de tratamento de colisão do player
 - Em caso de destruição, chamar rotina de animação especial
@@ -43,7 +43,7 @@ x Fazer animação dos objetos (só o helicóptero tem até agora)
 x Fazer movimentação
 - Adicionar função de colisão à rotina drawObject
 - Fazer rotina de tratamento de colisão de objetos
-  - Se for terra, trocar de direção (usar um pixel mais na ponta + velocidade X, ver se é terra)
+  x Se for terra, trocar de direção (usar um pixel mais na ponta + velocidade X, ver se é terra)
     - Se for míssel, trocar por um objeto explosão
 
 
@@ -54,6 +54,7 @@ x Fazer movimentação
 
 
 - Fazer setup inicial
+- Fazer subrotina de destruição do jogador (perda de uma vida)
 - Fazer subrotina de game over
 
 > Escolher todas as cores

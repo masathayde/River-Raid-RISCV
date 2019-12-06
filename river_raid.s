@@ -2,9 +2,8 @@
 .eqv BANK_COLOR_4 0x10101010 										# Cor da costa, deve ser verde
 .eqv RIVER_COLOR_4 0xb0b0b0b0 										# Cor do rio, azul
 .eqv SCORE_COLOR_4 0x0b0b0b0b
-.eqv FUEL_COLOR 0x00 											# Cor do combustível
 
-# As cores são essenciais para os testes de colisão e precisam ser diferentes
+# As cores são essenciais para os testes de colisão e precisam ser diferentes (talvez)
 .eqv BANK_COLOR 0x10
 .eqv RVCL 0xb0 # river color
 .eqv SCORE_COLOR 0x0b
@@ -18,11 +17,13 @@
 .eqv BRDG 0x00 # bridge color
 .eqv EXPL 0xFF # explosion color
 .eqv PLYR 0xFF # Player color
+.eqv SHOT 0xFF # Shot color
 
 .eqv M_LEFT 97 # a
 .eqv M_RIGHT 100 # d
 .eqv M_UP 119 # w
 .eqv M_DOWN 115 # s
+.eqv M_FIRE 101 # e
 
 .eqv MAX_BANK_SIZE 7
 .eqv MAX_DIFFICULTY 10											
@@ -32,7 +33,7 @@
 .eqv PLAYER_HEIGHT 20 # Medidas do sprite, em pixels
 .eqv PLAYER_WIDTH 20 
 
-.eqv TIMESTEP 33											# Em ms
+.eqv TIMESTEP 33 # Em ms
 
 .eqv VGAADDRESSINI0     0xFF000000
 .eqv VGAADDRESSFIM0     0xFF012C00
@@ -42,8 +43,9 @@
 
 .data
 	# Tentar agrupar todos os words no começo para não precisar usar .align
-	Arg8: .word 0 # Caso seja necessário mais de 7 argumentos
-	Arg9: .word 0 # Pois é
+	Arg8: 	.word 0 # Caso seja necessário mais de 7 argumentos
+	Arg9: 	.word 0 # Pois é
+	Arg10: 	.word 0 # Ahan
 
 #########################################################################################################################
 #  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ____________ _____ _   _ _____ ___________  ___  _____ _____ 
@@ -95,7 +97,7 @@
 	playerPosY: .byte 155 # Normalmente, não deve mudar
 	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
 	playerFuel: .byte 10
-	playerMissile: .byte 0 # Contador de tiros
+	playerShotCount: .byte 0 # Contador de tiros
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
 	playerSpeedX: .byte 4 # Velocidade em pixels/frame
                                                                                                       
@@ -122,7 +124,7 @@
 ##############################################                                                                                     		
 	.align 2
 	objectPtrList: .word object0, object1, object2, object3, object4, object5
-	
+	# Desatualizado
 	# 00 objectBitmapPtr0: .word # endereço do frame 0
 	# 04 objectBitmapPtr1: .word # endereço do frame 1
 	# 08 objectCollision: .word # endereço da rotina de colisão
@@ -144,13 +146,22 @@
 	object3: .space 32
 	object4: .space 32
 	object5: .space 32
-	
 	objectListWriteIdx: .byte 0	# Índice do vetor de objetos onde será escrito o próximo
 	
+	# shotBitmap: .word
+	# shotXcoord: .half
+	# shotYcoord: .half
+	# shotYspeed: .byte
+	# shotHeight: .byte
+	# shotWidth: .byte
+	# shotExists: .byte
+	shotCreate: .byte 0		# Se for 1 no frame atual, criamos um tiro novo
+	shotWriteIdx: .byte 0		# Índice para escrita
+	.align 2
+	shotVector: .space 400		# Espaço para 20 tiros
+	
+	
 .text
-
-# Incluir SYSTEMv17 mais tarde
-# Incluir explicação sobre o byte do bloco e como é usado para gerar uma linha
 
 # Setup inicial
 Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
@@ -197,6 +208,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					sw		zero,	0(t4)
 					la		t5,	object5
 					sw		zero,	0(t5)
+					
+					
 
 
 	# Os primeiros blocos são sempre neutros #
@@ -347,7 +360,32 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							j		Render.drawObjects
 	Render.drawObjects.end:
 						
+	####################
+	# DESENHO DE TIROS #		
+	####################
+						li		s0,	0				# i = 0
+						la		t0,	shotMax
+						lbu		s6,	0(t0)				# Número máximo de tiros
+						la		s1,	shotVector			# Vetor de tiros
+						la		t1,	shotSize
+						lbu		s2,	0(t1)				# Número do tamanho de cada espaço do vetor, para calcular offset
+	Render.shot.L:				beq		s0,	s6,	Render.shot.end 		# Iteramos no vetor de tiro
 						
+							lbu		t0,	11(s1)			# Verificamos se o tiro existe
+							beq		t0,	x0,	Render.shot.L.next # Se não existir, pulamos para o próximo
+							lh		a0,	4(s1)			# Coordenada X
+							lh		a1,	6(s1)			# Coordenada Y
+							lbu		a2,	9(s1)			# Altura
+							lbu		a3,	10(s1)			# Largura
+							lw		a4,	0(s1)			# Endereço da imagem
+							la		t0,	framePtr
+							lw		a5,	0(t0)			# Endereço do VGA
+							addi		a6,	s1,	12		# Booleana de colisão
+							call		drawShot																		
+	Render.shot.L.next:				addi		s0,	s0,	1		# i++
+							add		s1,	s1,	s2		# V[]++
+							j		Render.shot.L
+	Render.shot.end:		
 							
 ########################################
 #  _   _____________  ___ _____ _____ 
@@ -357,6 +395,63 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # | |_| | |   | |/ /| | | || | | |___ 
 #  \___/\_|   |___/ \_| |_/\_/ \____/ 
 ########################################        
+
+	########################
+	# ATUALIZAÇÃO DE TIROS #
+	########################
+	
+						la		t0,	shotCreate			# Verificamos se temos que criar um tiro
+						lbu		t1,	0(t0)
+						beq		t1,	zero,	Update.shotMovement	# Caso não, vamos para as rotinas de colisão
+						la		t0,	playerShotCount
+						lb		t1,	0(t0)				# Vemos quantos tiros foram criados
+						la		t0,	shotMax
+						lbu		t2,	0(t0)				# Pegamos a quantidade máxima para comparação
+						bge		t1,	t2,	Update.shotMovement	# Se chegou ao número máximo, não criamos um novo tiro
+						la		a0,	shotVector			# Endereço do vetor de tiros
+						la		a1,	shotFormat			# Modelo do objeto tiro
+						la		t0,	shotSize
+						lbu		a2,	0(t0)				# Tamanho em bytes
+						la		t0,	shotWriteIdx
+						lbu		a3,	0(t0)				# Índice para escrita
+						la		t1,	playerPosX
+						lh		a4,	0(t1)				# Posição X do jogador no momento
+						la		t0,	shotXoffset
+						lbu		a5,	0(t0)				# Offset X de ajuste
+						call		createShot
+						
+						la		t0,	shotWriteIdx			# Atualizando o índice de escrita
+						lbu		t1,	0(t0)
+						addi		t1,	t1,	1
+						li		t2,	20				# Tamanho do vetor de tiros
+						remu		t1,	t1,	t2			# Colocamos o índice dentro do limite
+						sb		t1,	0(t0)				# Escrito no endereço
+						la		t0,	playerShotCount			# Atualizando número de tiros
+						lbu		t2,	0(t0)
+						addi		t2,	t2,	1			# +1
+						sb		t2,	0(t0)				# Gravando no endereço
+						la		t1,	shotCreate
+						sb		zero,	0(t1)				# Retornamos a booleana de criação para 0
+									
+						
+	Update.shotMovement:			li		s0,	0				# i = 0
+						la		t0,	shotMax
+						lbu		s6,	0(t0)				# Número máximo de tiros
+						la		s1,	shotVector			# Vetor de tiros
+						la		t1,	shotSize
+						lbu		s2,	0(t1)				# Número do tamanho de cada espaço do vetor, para calcular offset
+	Update.shotMovement.L:			beq		s0,	s6,	Update.shotMovement.end # Iteramos no vetor de tiro
+						
+							lbu		t0,	11(s1)			# Verificamos se o tiro existe
+							beq		t0,	x0,	Update.shotMovement.L.next # Se não existir, pulamos para o próximo
+							mv		a0,	s1
+							call		moveShot					
+	Update.shotMovement.L.next:			addi		s0,	s0,	1		# i++
+							add		s1,	s1,	s2		# V[]++
+							j		Update.shotMovement.L
+	Update.shotMovement.end:
+	
+	
 
 
 	###########################
@@ -410,6 +505,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							add		s2,	s2,	s3		# Object[] + 1
 							j		Update.objectUpdate
 	Update.objectUpdate.end:
+	
+	
 						
 	######################################
         # ATUALIZAÇÃO DOS OFFSETS DE LEITURA #
@@ -615,6 +712,9 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		a7,	playerCrrSpr
 						la		t0,	Arg8
 						la		t1,	scrollSpeed
+						sw		t1,	0(t0)
+						la		t0,	Arg9
+						la		t1,	shotCreate
 						sw		t1,	0(t0)
 						call		getInputRars
 						
@@ -1087,6 +1187,7 @@ drawPlayerChkC:				addi		sp,	sp,	-4
 # a6: Endereço do sprite de virada do jogador
 # a7: Endereço do espaço no qual é salvo o endereço do sprite atual
 # Arg8: Endereço da velocidade de scroll da tela
+# Arg9: Endereço da variável de criação de tiro
 #############################################
 getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 					andi		t0,	t0,	1				# Aplicando bitmask
@@ -1127,13 +1228,21 @@ getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 					j		getInputRars.end
 					
 	getInputRars.testDown:		li		t1,	M_DOWN
-					bne		t0,	t1,	getInputRars.noMove		# Testamos se é baixo
+					bne		t0,	t1,	getInputRars.testFire		# Testamos se é baixo
 					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
 					lbu		t2,	0(t1)
 					la		t1,	Arg8					# Pegamos o endereço onde está a velocidade de scroll da tela
 					lw		t3,	0(t1)					#
 					sb		t2,	0(t3)					# Atualizamos a velocidade
 					sw		a5,	0(a7)
+					j		getInputRars.end
+					
+	getInputRars.testFire:		li		t1,	M_FIRE
+					bne		t0,	t1,	getInputRars.noMove		# Testamos se é tiro
+					la		t1,	Arg9					
+					lw		t2,	0(t1)					# Endereço da variável de criação de tiro
+					li		t3,	1
+					sb		t3,	0(t2)					# Colocamos 1 para pedir criação de tiro
 					j		getInputRars.end
 					
 	getInputRars.noMove:		sw		a5,	0(a7)					# Como não houve movimento, o sprite padrão é usado
@@ -1411,6 +1520,112 @@ animateObject:				beq		a3,	zero,	animateObject.end			# Se não for um objeto anim
 					sw		t0,	0(a1)						# Trocado também
 					li		a2,	0						# Resetamos o contador						
 	animateObject.end:		ret
+
+
+#############################
+# Cria um tiro				
+# a0: Endereço do vetor de tiros
+# a1: Endereço com o "formato" do tiro
+# a2: Tamanho do objeto "tiro" em bytes
+# a3: Índice de escrita
+# a4: Coordenada X inicial
+# a5: Offset X para ajuste
+############################		
+createShot:				addi		sp,	sp,	-16
+					sw		ra,	0(sp)
+					sw		s0,	4(sp)
+					sw		s1,	8(sp)
+					sw		s2,	12(sp)
+					
+					mv		s0,	a4						# Salvando, porque será chamada uma sub rotina
+					mv		s2,	a5
+					mul		t0,	a2,	a3					# Cálculo do offset
+					add		a0,	a0,	t0					# Aplicando
+					mv		s1,	a0
+					call		memcpy							# Os argumentos já estão prontos
+					add		s0,	s0,	s2					# Fazemos ajuste da coordenada X
+					sh		s0,	4(s1)						# Colocamos o valor da coordenada X			
+					
+					lw		s2,	12(sp)
+					lw		s1,	8(sp)
+					lw		s0,	4(sp)
+					lw		ra,	0(sp)
+					addi		sp,	sp,	16
+					ret
+
+#############################
+# Atualiza posição do tiro			
+# a0: Endereço do tiro
+############################
+# Faz todas as alterações na memória principal
+moveShot:				lh		t0,	6(a0)						# Coordenada Y do tiro
+					lb		t1,	8(a0)						# Velocidade Y
+					add		t0,	t0,	t1					# Atualizando posição
+					sh		t0,	6(a0)						# Salvando
+					ret
+
+#############################
+# Desenha um tiro na tela e detecta colisão				
+# a0: Coordenada X
+# a1: Coordenada Y
+# a2: Altura do tiro
+# a3: Largura do tiro
+# a4: Endereço do bitmap do objeto
+# a5: Endereço do VGA
+# a6: Endereço da booleana de colisão
+############################
+
+drawShot:				addi		sp,	sp,	-4
+					sw		s0,	0(sp)
+					li		s0,	0				# Váriavel que indica se já houve colisão, para não testarmos de novo se houver
+
+					blt		a1,	zero,	drawShot.collided	# Se Y < 0, o tiro não é mais visível, então consideramos uma colisão
+					li		t0,	160				# Número máximo de linhas visíveis
+					sub		t1,	a1,	a2			# t1 = coordenada do topo do tiro
+					bgt		t1,	t0,	drawShot.collided	# Se o topo estiver acima de 160, tiro não é visível
+
+	drawShot.start:			beq		a2,	zero,	drawShot.finish		# while (height > 0 )
+						
+						# Calculando o endereço no VGA
+						li		t0,	320
+						mul		t0,	a1,	t0			# Y*320
+						add		t0,	t0,	a0			# t0 = Y*320 + X
+						add		t0,	t0,	a5			# VGAStart + t0 é o endereço		
+						
+						mv		t6,	a3				# t6 = j = largura do objeto					
+	drawShot.drawLine:			beq		t6,	zero,	drawShot.drawLine.end 	# while (j > 0 )
+							
+							li		t5,	160
+							bgtu		a1,	t5,	drawShot.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
+							
+							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
+							li		t2,	RVCL			# Transparência
+							beq		t1,	t2,	drawShot.noDraw # Se a cor for igual a do rio, então não pintamos
+							# Colisão
+							bne		s0,	zero,	drawShot.skipCol# Se já tivermos feito colisão, não fazemos de novo		
+							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela		
+							beq		t3,	t2,	drawShot.skipCol# Se for igual ao rio, então não há colisão
+							li		s0,	1			# Houve colisão
+							sb		s0,	0(a6)			# Salvamos no endereço de colisão e não fazemos mais teste														
+	drawShot.skipCol:				sb		t1,	0(t0)			# Desenhamos na tela
+	drawShot.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte	
+							addi		t0,	t0,	1		# Próximo endereço de pintura
+							addi		t6,	t6,	-1		# j--
+							j		drawShot.drawLine
+							
+	drawShot.drawLine.end:			addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
+						addi		a2,	a2,	-1			# height--
+						j		drawShot.start				# Se estiver como esperado, a4 já deve estar com o endereço certo
+	
+	drawShot.collided:		li		t0,	1					# Houve colisão, ativamos a booleana
+					sb		t0,	0(a6)					# Salvamos a colisão
+		
+	drawShot.finish:		lw		s0,	0(sp)
+					addi		sp,	sp,	4	
+					ret				
+
+
+
 
 ###############################
 # - Memcpy -
@@ -1836,6 +2051,29 @@ objectBridge:	.word Bridg_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.space 3
 
 objectBridgeOffset: .byte 7
+
+# Tiro
+shotSize: 	.byte 20		# Tamanho de um tiro em bytes
+shotMax:	.byte 20		# Número máximo de tiros
+shotDelay:	.byte 6			# Número de frames que é preciso esperar para atirar de novo
+shotXoffset:	.byte 10		# Aplicado para que o tiro saia do centro do player
+.align 2
+shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
+		.half 0			# 04 Coordenada X
+		.half 145		# 06 Coordenada Y
+		.byte -8		# 08 Velocidade Y (Negativa, porque vai para o topo)
+		.byte 6			# 09 Altura da imagem
+		.byte 2			# 10 Largura da imagem
+		.byte 1			# 11 Booleana de existência
+		.byte 0			# 12 Booleana de colisão		
+
+Shot_f0:	.byte SHOT, SHOT 
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT 
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT	
+	
 
 #######################
 # Includes
