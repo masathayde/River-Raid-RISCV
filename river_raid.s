@@ -15,7 +15,7 @@
 .eqv TRNK 0xFF # tree trunk color
 .eqv TREE 0xFF # tree leaves color
 .eqv BRDG 0x00 # bridge color
-.eqv EXPL 0xFF # explosion color
+.eqv EXPL 0xb6 # explosion color
 .eqv PLYR 0xFF # Player color
 .eqv SHOT 0xFF # Shot color
 
@@ -96,7 +96,7 @@
 	playerLives: .byte 4
 	playerPosY: .byte 155 # Normalmente, não deve mudar
 	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
-	playerFuel: .byte 10
+	playerFuel: .byte 100
 	playerShotCount: .byte 0 # Contador de tiros
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
 	playerSpeedX: .byte 4 # Velocidade em pixels/frame
@@ -169,7 +169,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
  					csrrw 		zero,5,tp 		# seta utvec (reg 5) para o endereço tp
  					csrrsi 		zero,0,1 		# seta o bit de habilitação de interrupção em ustatus (reg 0)
  					
-
 # .d8888b.  8888888888 88888888888 888     888 8888888b.       8888888 888b    888 8888888 .d8888b. 8888888        d8888 888      
 # d88P  Y88b 888            888     888     888 888   Y88b        888   8888b   888   888  d88P  Y88b  888         d88888 888      
 # Y88b.      888            888     888     888 888    888        888   88888b  888   888  888    888  888        d88P888 888      
@@ -355,6 +354,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							lbu		a6,	25(s2)			# Direção do objeto
 							la		t0,	framePtr
 							lw		a5,	0(t0)			# Endereço do VGA
+							addi		a7,	s2,	28		# Endereço da booleana de colisão
 							call		drawObject
 	Render.drawObjects.empty:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
@@ -387,7 +387,38 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							add		s1,	s1,	s2		# V[]++
 							j		Render.shot.L
 	Render.shot.end:		
+				
+	########################
+	# DESENHO DE OBJETOS 2 #
+	########################
+	# De novo? Infelizmente.
+	# Maneira mais fácil que eu encontrei para que tiros e objetos se detectem no mesmo frame corretamente
+	
+						li		s0,	0				# s0 = i
+						li		s1,	6
+						la		s2,	object0				# Endereço do primeiro objeto
+						la		t0,	objectSize			
+						lbu		s3,	0(t0)				# Tamanho dos objetos, para cálculo de offset
+	Render.drawObjects2:			beq		s0,	s1,	Render.drawObjects2.end	# Para cada um dos objetos
+						
+							lw		t0,	0(s2)
+							beq		t0,	zero,	Render.drawObjects2.empty # Não desenhamos se ainda não foi escrito
 							
+							lhu		a0,	16(s2)			# Coordenada X aqui
+							lh		a1,	18(s2)			# Coordenada Y aqui
+							lbu		a2,	23(s2)			# Altura do objeto
+							lbu		a3,	24(s2)			# Largura do objeto
+							lw		a4,	0(s2)			# Endereço do bitmap do objeto
+							lbu		a6,	25(s2)			# Direção do objeto
+							la		t0,	framePtr
+							lw		a5,	0(t0)			# Endereço do VGA
+							addi		a7,	s2,	28		# Endereço da booleana de colisão
+							call		drawObject
+	Render.drawObjects2.empty:			addi		s0,	s0,	1		# ++i
+							add		s2,	s2,	s3		# Object[] + 1
+							j		Render.drawObjects2
+	Render.drawObjects2.end:						
+													
 ########################################
 #  _   _____________  ___ _____ _____ 
 # | | | | ___ \  _  \/ _ \_   _|  ___|
@@ -502,10 +533,24 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							addi		a1,	s2,	4		# Endereço do frame 1
 							lbu		a2,	26(s2)			# Contador de frames
 							lbu		a3,	27(s2)			# Número limite do contador
+							lw		a4,	12(s2)			# Endereço de rotina especial
 							call		animateObject
-							sb		a2,	26(s2)			# Atualizando o contador	
-	
-	
+							sb		a2,	26(s2)			# Atualizando o contador
+							
+						#########################
+						# TRATAMENTO DE COLISÃO #	
+						#########################
+						
+							mv		a0,	s2			# Endereço do objeto
+							la		a1,	objectExplo		# Endereço do objeto que substituirá
+							la		t0,	objectSize		# Tamanho do objeto
+							lbu		a2,	0(t0)
+							addi		a3,	s2,	28		# Endereço da booleana de colisão
+							addi		a4,	s2,	16		# Endereço da posição X
+							addi		a5,	s2,	18		# Endereço da posição Y
+							addi		a6,	s2,	20		# Endereço do tipo de objeto
+							call		objectColHandler			
+							
 	Update.objectUpdate.nope:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
 							j		Update.objectUpdate
@@ -1040,10 +1085,15 @@ renderPlayfield:			li		t0,	0					# i = 0
 # a4: Endereço do bitmap do objeto
 # a5: Endereço do VGA
 # a6: Desenhar invertido (1 ou 0)
-# TODO: Hit detection
+# a7: Endereço da booleana de colisão
+# Testa colisão com tiros
 ############################
 
-drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visível
+drawObject:				addi		sp,	sp,	-4
+					sw		s0,	0(sp)
+					li		s0,	0				# Váriavel que indica se já houve colisão, para não testarmos de novo se houver
+
+					blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visível
 					li		t0,	160				# Número máximo de linhas visíveis
 					sub		t1,	a1,	a2			# t1 = coordenada do topo do objeto
 					bgt		t1,	t0,	drawObject.finish	# Se o topo estiver acima de 160, objeto não é visível
@@ -1068,8 +1118,15 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 							
 							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
 							li		t2,	RVCL			# Transparência
-							beq		t1,	t2,	drawObject.noDraw # Se a cor for igual a do rio, então não pintamos							
-							sb		t1,	0(t0)			# Desenhamos na tela
+							beq		t1,	t2,	drawObject.noDraw # Se a cor for igual a do rio, então não pintamos
+							# Colisão
+							bne		s0,	zero,	drawObject.skipCol# Se já tivermos feito colisão, não fazemos de novo							
+							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela														
+							li		t2,	SHOT			# Cor do tiro
+							bne		t3,	t2,	drawObject.skipCol # Se não for igual a cor do tiro, não houve colisão
+							li		s0,	1			# Houve colisão
+							sb		s0,	0(a7)			# Salvamos no endereço de colisão e não fazemos mais teste																																	
+	drawObject.skipCol:				sb		t1,	0(t0)			# Desenhamos na tela
 	drawObject.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte
 	
 							addi		t0,	t0,	1		# Próximo endereço de pintura
@@ -1084,8 +1141,15 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 							
 							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
 							li		t2,	RVCL			# Transparência
-							beq		t1,	t2,	drawObject.noDrawF # Se a cor for igual a do rio, então não pintamos							
-							sb		t1,	0(t0)			# Desenhamos na tela
+							beq		t1,	t2,	drawObject.noDrawF # Se a cor for igual a do rio, então não pintamos
+							# Colisão
+							bne		s0,	zero,	drawObject.skipColF# Se já tivermos feito colisão, não fazemos de novo							
+							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela														
+							li		t2,	SHOT			# Cor do tiro
+							bne		t3,	t2,	drawObject.skipColF # Se não for igual a cor do tiro, não houve colisão
+							li		s0,	1			# Houve colisão
+							sb		s0,	0(a7)			# Salvamos no endereço de colisão e não fazemos mais teste																											
+	drawObject.skipColF:				sb		t1,	0(t0)			# Desenhamos na tela
 	drawObject.noDrawF:				addi		a4,	a4,	-1		# Passamos para o próximo byte
 	
 							addi		t0,	t0,	1		# Próximo endereço de pintura
@@ -1099,7 +1163,9 @@ drawObject:				blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visíve
 						addi		a2,	a2,	-1			# height--
 						j		drawObject.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
 						
-	drawObject.finish:		ret
+	drawObject.finish:		lw		s0,	0(sp)
+					addi		sp,	sp,	4
+					ret
 	
 #############################
 # Desenha o jogador na tela				
@@ -1292,6 +1358,7 @@ getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 # a7: Endereço do espaço no qual é salvo o endereço do sprite atual
 # Arg8: Endereço da velocidade de scroll da tela
 # Arg9: Endereço do sinal do botão do stick
+# Arg10: Endereço da variável de criação de tiro
 #############################################
 getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mudado se houver movimento
 					la		t1,	Arg8					# Pegamos o endereço..
@@ -1352,7 +1419,10 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					lw		t1,	0(t0)
 					lw		t2,	0(t1)					# Pegamos o valor no endereço
 					bne		t2,	zero,	getInputStick.end		# O botão é ativo em zero
-					# Aqui colocaremos o caso de tiro
+					la		t1,	Arg10					
+					lw		t2,	0(t1)					# Endereço da variável de criação de tiro
+					li		t3,	1
+					sb		t3,	0(t2)					# Colocamos 1 para pedir criação de tiro
 
 	getInputStick.end:		ret
 			
@@ -1528,25 +1598,83 @@ moveObjectX:				blt		a1,	zero,	moveObjectX.noUpdate		# Se Y < 0, não movimentamo
 #############################
 # Troca o frame de animação de um objeto
 # Entradas:			
-# a0: Endereço do frame 0
-# a1: Endereço do frame 1
+# a0: Ponteiro para o endereço do frame 0 (Deve ser o primeiro word do objeto)
+# a1: Ponteiro para o endereço do frame 1
 # a2: Contador de frames para troca
 # a3: Número para a troca
+# a4: Endereço de rotina especial
 # Saídas:
 # a2: Contador de frames atualizado
 # Também altera o conteúdo dos endereços a0 e a1
 ############################
 
-animateObject:				beq		a3,	zero,	animateObject.end			# Se não for um objeto animado, não é feita a rotina
-					addi		a2,	a2,	1
-					bne		a2,	a3,	animateObject.end			# Se a2 != a3, ainda não é hora de atualizar o frame
+animateObject:				addi		sp,	sp,	-8
+					sw		ra,	0(sp)
+					sw		s0,	4(sp)
+					
+					beq		a3,	zero,	animateObject.end			# Se não for um objeto animado, não é feita a rotina
+					mv		s0,	a2
+					addi		s0,	s0,	1
+					bne		s0,	a3,	animateObject.end			# Se a2 != a3, ainda não é hora de atualizar o frame
+					bne		a4,	zero,	animateObject.special			# Se houver uma rotina especial, iremos chamá-la					
 					lw		t0,	0(a0)						# Salvamos o endereço do frame anterior em t0 temporariamente
 					lw		t1,	0(a1)						# Pegamos o endereço do frame novo para sobreescrever
 					sw		t1,	0(a0)						# Trocado
 					sw		t0,	0(a1)						# Trocado também
-					li		a2,	0						# Resetamos o contador						
-	animateObject.end:		ret
+					li		s0,	0						# Resetamos o contador
+					j		animateObject.end						
+	
+	animateObject.special:		# Lembrando que a0 e a1 estão inalterados e vão ser usados na rotina a seguir
+					jalr		ra,	a4,	0						# Vamos até lá
+	animateObject.end:		mv		a2,	s0							# Contador atualizado
+					
+					
+					lw		ra,	0(sp)
+					lw		s0,	4(sp)
+					addi		sp,	sp,	8
+					ret
 
+
+#############################
+# Tratamento de colisão de objeto			
+# a0: Endereço do objeto a ser substituído
+# a1: Endereço de objeto para substituição
+# a2: Tamanho do objeto em bytes
+# a3: Endereço da booleana de colisão
+# a4: Endereço da posição X
+# a5: Endereço da posição Y
+# a6: Endereço do tipo de objeto
+############################
+objectColHandler:			addi		sp,	sp,	-24
+					sw		ra,	0(sp)
+					sw		s0,	4(sp)
+					sw		s1,	8(sp)
+					sw		s2,	12(sp)
+					sw		s3,	16(sp)
+					sw		s4,	20(sp)
+					
+					mv		s0,	a4						# Salvando o endereço das posições para colocarmos o valor certo depois...
+					mv		s1,	a5						# ..da substituição
+					lbu		s4,	0(a6)						# Pegando tipo do objeto para checagem a seguir	
+					lh		s2,	0(s0)						# Valor de X
+					lh		s3,	0(s1)						# Valor de Y
+					lbu		t0,	0(a3)						# Testamos se houve colisão no frame
+					beq		t0,	zero,	objectColHandler.end			# Se não houve, nada fazemos
+					call		memcpy
+					li		t0,	99						# Tipo da ponte
+					bne		s4,	t0,	objectColHandler.noAdjust		# Se for ponte, ajustamos o X para que a explosão apareça centrada
+					addi		s2,	s2,	30					# Offsetzinho										
+	objectColHandler.noAdjust:	sh		s2,	0(s0)						# Colocando o valor de X correto							
+					sh		s3,	0(s1)						# Colocando o valor de Y correto	
+																																	# Todas os argumentos estão em posição				
+	objectColHandler.end:		lw		ra,	0(sp)
+					lw		s0,	4(sp)
+					lw		s1,	8(sp)
+					lw		s2,	12(sp)
+					lw		s3,	16(sp)
+					lw		s4,	20(sp)
+					addi		sp,	sp,	24
+					ret
 
 #############################
 # Cria um tiro				
@@ -1600,7 +1728,6 @@ moveShot:				lh		t0,	6(a0)						# Coordenada Y do tiro
 # a5: Endereço do VGA
 # a6: Endereço da booleana de colisão
 ############################
-
 drawShot:				addi		sp,	sp,	-4
 					sw		s0,	0(sp)
 					li		s0,	0				# Váriavel que indica se já houve colisão, para não testarmos de novo se houver
@@ -1667,6 +1794,21 @@ shotColHandler:				lbu		t0,	0(a0)					# Pegamos a booleana de colisão
 	shotColHandler.store:		sb		t1,	0(a2)
 	shotColHandler.end:		ret
 
+#############################
+# Rotina especial para troca de explosão por espaço vazio				
+# a0: Endereço do objeto
+############################
+stopExplosion:				addi		sp,	sp,	-4
+					sw		ra,	0(sp)
+					la		a1,	objectEmpty				# Endereço do objeto vazio
+					li		a2,	32					# Tamanho do objeto. Número mágico porque preguiça
+					call		memcpy
+					lw		ra,	0(sp)
+					addi		sp,	sp,	4
+					ret
+					
+					
+					
 ###############################
 # - Memcpy -
 # Entradas.
@@ -1858,6 +2000,27 @@ Leuf_f0: .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF,
 	 .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL
 	 
+Expl_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL         
+	 
 # Bridge (80w 12h)
 Bridg_f0:.byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG 
 	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
@@ -2035,20 +2198,20 @@ objectLeuf:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 
 .align 2
 # 97 - Explosion
-objectExplo:    .word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+objectExplo:    .word Expl_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Expl_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
 		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.word stopExplosion	# 12 objectAction: .word # endereço de rotina especial	
 		.half 0			# 16 objectXpos: .half
 		.half 0			# 18 objectYpos: .half			
 		.byte 97		# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
+		.byte 1			# 21 objectIsAnim: .byte
 		.byte 0			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 1			# 26 objectAnimationCounter: .byte	
+		.byte 3			# 27 objectAnimationTime: .byte	
 		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
 		.space 3
 
@@ -2063,8 +2226,8 @@ objectEmpty:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.byte 98		# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
 		.byte 0			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 23 objectHeight: .byte	
+		.byte 0			# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
 		.byte 0			# 26 objectAnimationCounter: .byte	
 		.byte 0			# 27 objectAnimationTime: .byte	

@@ -5,8 +5,7 @@ x Definir variável de dificuldade
 x Fazer com que uma ponte seja gerada a cada 16 blocos
 x Geração de blocos levando a dificuldade em consideração
 
-- Colocar explosão no rom
-- Colocar "empty" no rom"
+x Colocar explosão no rom
 - Diminuir tamanho de fuel e leuf
 
 x Adicionar transparência na rotina drawObject
@@ -41,10 +40,10 @@ x Rotina de tratamento de input
 
 x Fazer animação dos objetos (só o helicóptero tem até agora)
 x Fazer movimentação
-- Adicionar função de colisão à rotina drawObject
-- Fazer rotina de tratamento de colisão de objetos
+x Adicionar função de colisão à rotina drawObject
+x Fazer rotina de tratamento de colisão de objetos
   x Se for terra, trocar de direção (usar um pixel mais na ponta + velocidade X, ver se é terra)
-    - Se for míssel, trocar por um objeto explosão
+    x Se for míssel, trocar por um objeto explosão
 
 
 - Fazer rotina de reprodução de som
@@ -52,7 +51,9 @@ x Fazer movimentação
     - Quando chega ao valor, passa para a próxima nota
   - Variável de quanto tempo ainda falta para acabar o som todo
 
-
+- Printar combústivel na tela
+- Printar vidas na tela
+- Printar score na tela
 - Fazer setup inicial
 - Fazer subrotina de destruição do jogador (perda de uma vida)
 - Fazer subrotina de game over
