@@ -257,12 +257,12 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 # Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
 ########################
 DifficultyOffset:	.byte 5
-DifficultyTable:	.byte 1, 7, 2, 5, 2 # Dificuldade 0
+DifficultyTable:	.byte 3, 7, 2, 4, 2 # Dificuldade 0
 	  		.byte 2, 5, 2, 4, 2 # Dificuldade 1
-	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
-	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
+	  		.byte 4, 3, 2, 4, 3 # Dificuldade 2
+	  		.byte 5, 2, 2, 4, 4 # Dificuldade 3
 	  	
-	  		.byte 6, 1, 1, 12,4 # Doomguy_ouch.png
+	  		.byte 6, 1, 1, 4,4 # Doomguy_ouch.png
 
 ####################
 # Constantes
@@ -442,8 +442,8 @@ shotXoffset:	.byte 9			# Aplicado para que o tiro saia do centro do player
 shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 		.half 0			# 04 Coordenada X
 		.half 145		# 06 Coordenada Y
-		.byte -12		# 08 Velocidade Y (Negativa, porque vai para o topo)
-		.byte 9			# 09 Altura da imagem
+		.byte -14		# 08 Velocidade Y (Negativa, porque vai para o topo)
+		.byte 11			# 09 Altura da imagem
 		.byte 2			# 10 Largura da imagem
 		.byte 1			# 11 Booleana de existência
 		.byte 0			# 12 Booleana de colisão		
@@ -451,6 +451,8 @@ shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 Shot_f0:	.byte SHOT, SHOT 
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT 
+		.byte SHOT, SHOT
+		.byte SHOT, SHOT
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT

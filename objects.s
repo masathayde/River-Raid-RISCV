@@ -168,6 +168,7 @@ generateObject:				addi		sp,	sp,	-28
 # a0: ID do bloco
 # a1: Largura do objeto
 # a2: Offset Y ( quantidade de linhas do bloco que já foram desenhadas)
+# a3: Coordenada Y desejada
 # Saídas:
 # a0: Coordenada X escolhida
 # a1: Coordenada Y escolhida
@@ -199,8 +200,9 @@ placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
 					mul		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20
 					add		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20 + 20
 					mv		a0,	t0					# Colocamos em a0 para retornar
-					li		a1,	-6					# Y inicial padrão para um objeto novo ("fora da tela")
-					add		a1,	a1,	a2				# Ajuste necessário, sem ele o objetos novos seram colocados em posições erradas
+					#li		a1,	-6					# Y inicial padrão para um objeto novo ("fora da tela")
+					#add		a1,	a1,	a2				# Ajuste necessário, sem ele o objetos novos seram colocados em posições erradas
+					add		a1,	a3,	a2				# Y desejada, ajustada com o offset
 					ret
 
 #############################

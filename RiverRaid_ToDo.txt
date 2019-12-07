@@ -57,7 +57,7 @@ x Fazer rotina de reprodução de som
 x Fazer atualização do score
 x Fazer rotina de perda de combustível
 x Limitar quantidade máxima de combústivel
-- Mudar geração do mapa inicial
+x Mudar geração do mapa inicial
 
 : Opcional: Colocar som de voo
 

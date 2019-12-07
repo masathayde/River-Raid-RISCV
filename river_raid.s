@@ -169,69 +169,31 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 
 
 	# Os primeiros blocos são sempre neutros #
-					li		s0,	5					# i = 5
+	# Primeiro bloco é sempre ponte
+					li		a0,	0x52					# 0x52 Cria um bloco onde cabe uma ponte
+					call		setupCreateBlock
+					li		a0,	0x07
+					call		setupCreateBlock
+	
+					li		s0,	3					# i = 5
+					li		s1,	90					# Coordenada Y do primeiro objeto
 	InitSetup.genMap.0:		beq		s0,	zero,	InitSetup.genMap.0.end		# (while i > 0)
 						
-						la		t0,	blockCurrent
-						li		t1,	0x07				# Um bloco ponte
-						sb		t1,	0(t0)				# Salvamos no endereço do bloco atual
-		
-						la		a0,	playfield
-						la		t0,	pfWriteOffset
-						lbu		a1,	0(t0)
-						la		t0,	blockCurrent
-						lbu		a2,	0(t0)
-						call		writeBlockToPlayfield			# Salvando no playfield
 						
-						la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
-						lbu		t1,	0(t0)
-						addi		t1,	t1,	32
-						li		t2,	192
-						remu		t1,	t1,	t2			# Wraparound
-						sb		t1,	0(t0)
-						
-						la		t0,	blockCounter
-						lbu		t1,	0(t0)				# Atualizamos o número de blocos escritos
-						addi		t1,	t1,	1
-						sb		t1,	0(t0)
-						
-						
+						li		a0,	0x07				# Um bloco largo
+						call		setupCreateBlock
+						mv		a0,	s1
+						call		setupGenerateObject
+					
+						addi		s1,	s1,	-32			# Cada objeto tem essa distância vertical um do outro
 						addi		s0,	s0,	-1			# i--
 						j		InitSetup.genMap.0
 						
-	InitSetup.genMap.0.end:		la		a0,	blockCurrent			# Geração do bloco novo
-					la		a1,	blockPrevious
-					la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
-					la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
-					la		t2,	difficulty			# Endereço da dificuldade
-					lbu		t3,	0(t2)				# Pegamos o valor da dificuldade
-					lbu		t4,	0(t1)				# Pegando o offset
-					mul		t3,	t3,	t4			# Multiplicando dificuldade por offset para acharmos a posição na tabela
-					add		t0,	t0,	t3			# Encontramos o endereço da posição correspondente à dificuldade atual
-					lbu		a2,	0(t0)				# Quantidade de blocos máxima de terra, partindo da ponta
-					lbu		a3,	1(t0)				# Quantidade de blocos mínima de rio
-					lbu		a4,	2(t0)				# Largura mínima de abertura
-						
-					call		createBlock
+	InitSetup.genMap.0.end:		li		a0,	0					# Valor 0, para que gere um bloco aleatório
+					call		setupCreateBlock
 					
-					la		a0,	playfield
-					la		t0,	pfWriteOffset
-					lbu		a1,	0(t0)
-					la		t0,	blockCurrent
-					lbu		a2,	0(t0)
-					call		writeBlockToPlayfield
-					
-					la		t0,	pfWriteOffset			# Atualizamos o offset de escrita
-					lbu		t1,	0(t0)
-					addi		t1,	t1,	32
-					li		t2,	192
-					remu		t1,	t1,	t2			# Wraparound
-					sb		t1,	0(t0)
-					
-					la		t0,	blockCounter
-					lbu		t1,	0(t0)				# Atualizamos o número de blocos escritos
-					addi		t1,	t1,	1
-					sb		t1,	0(t0)
+					li		a0,	-6
+					call		setupGenerateObject
 						
 	InitSetup.genMap.end:
 	
@@ -668,7 +630,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lh		t2,	18(s0)				# Pegando coordenada Y
 						add		t2,	t2,	t1			# Ajustando Y
 						sh		t2,	18(s0)
-						j		Update.objectListUpdate
+						#j		Update.objectListUpdate
 						
 						# Game level update
 						la		t1,	gameLevel			# Como geramos uma ponte, incrementamos o nível do jogo
@@ -687,10 +649,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						addi		t1,	t1,	1			# Incrementando
 						la		t2,	maxDiffic
 						lbu		t3,	0(t2)				# Carregando valor da dificuldade máxima
-						blt		t1,	t3,	Update.notMaxDiffic	# Se o valor da nova dificuldade for maior que o máximo, ajustamos-o
+						ble		t1,	t3,	Update.notMaxDiffic	# Se o valor da nova dificuldade for maior que o máximo, ajustamos-o
 						mv		t1,	t3				# Chegando à dificuldade máxima, o jogo permanece nela
 	Update.notMaxDiffic:			sb		t1,	0(t0)				# Dificuldade atualizada
-						j		Update.write2Playfield			
+						j		Update.objectListUpdate			
 						
 	Update.genPreBridge:			la		t0,	blockCurrent
 						la		t1,	blockPrevious
@@ -739,6 +701,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t2,	lineDrawnCounter		
 						lbu		a2,	0(t2)				# Número de linhas desenhadas do novo bloco
 						li		a1,	20				# Até agora, todos os objetos criados aqui tem largura 20
+						li		a3,	-6				# Y padrão de um objeto novo
 						call		placeObject
 						
 						addi		t0,	s7,	16			# Endereço de escrita salvo antes de generateObject, com offset..
@@ -1261,3 +1224,4 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 .include "general.s"
 .include "rom.s"
 .include "SYSTEMv17.s"
+.include "wip.s"
