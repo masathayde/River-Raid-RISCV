@@ -267,9 +267,10 @@ DifficultyTable:	.byte 1, 7, 2, 5, 2 # Dificuldade 0
 ####################
 # Constantes
 ####################
-fuelChargeRate:	.byte 3
+.align 1
+fuelMax: .half 300
+fuelChargeRate:	.byte 7
 fuelLossRate:	.byte 1
-fuelMax: .byte 50
 maxDiffic: .byte 5				# Dificuldade máxima
 difficInterv: .byte 1				# Número de seções para que haja aumento de dificuldade
 
@@ -497,7 +498,9 @@ livesString: .string "Lives "
 titleString: .string "RIVER RIAD"
 subtitleString: .string "UnB - OAC - 2019"
 promptString: .string "Press 'Shoot' to begin"
-hiscoreString: .string "Hi-Score "
+promptString2: .string "Press '0' to quit"
+hiscoreString: .string "Hi-Score"
 gameoverString: .string "GAME OVER"
 readyString: .string "READY!"
+quitString: .string "See you next time!"
 

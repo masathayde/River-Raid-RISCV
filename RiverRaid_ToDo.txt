@@ -52,7 +52,9 @@ x Fazer rotina de reprodução de som
     = Quando chega ao valor, passa para a próxima nota
   = Variável de quanto tempo ainda falta para acabar o som todo
 
-- Fazer atualização do score
+- Fazer com que tiro não colida com explosão
+
+x Fazer atualização do score
 x Fazer rotina de perda de combustível
 x Limitar quantidade máxima de combústivel
 - Mudar geração do mapa inicial
@@ -67,7 +69,7 @@ x Fazer subrotina de destruição do jogador (perda de uma vida)
 - Fazer subrotina de game over
 - Talvez mudar uma coisinha
 
-- Fazer menu principal
+x Fazer menu principal
 - Colocar dificuldade no nível padrão
 
 > Escolher todas as cores

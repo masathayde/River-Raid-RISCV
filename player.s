@@ -119,9 +119,9 @@ playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisã
 					
 					la		t0,	fuelChargeRate				# Endereço de constante de recarga
 					lbu		t1,	0(t0)
-					lbu		t2,	0(a1)					# Nível de combústivel atual
+					lh		t2,	0(a1)					# Nível de combústivel atual
 					add		t2,	t2,	t1				# Enchemos o tanque um pouco
-					sb		t2,	0(a1)					# Salvando
+					sh		t2,	0(a1)					# Salvando
 					li		a0,	0					# Não é crash
 					li		a1,	3					# Som 3	
 					j		playerColHandler.end
@@ -130,9 +130,9 @@ playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisã
 					bne		a0,	t0,	playerColHandler.noCol		# Colisão com bad fuel
 					la		t0,	fuelChargeRate				# Endereço de constante de recarga
 					lbu		t1,	0(t0)
-					lb		t2,	0(a1)					# Nível de combústivel atual
+					lh		t2,	0(a1)					# Nível de combústivel atual
 					sub		t2,	t2,	t1				# Drenamos o tanque um pouco
-					sb		t2,	0(a1)					# Salvando
+					sh		t2,	0(a1)					# Salvando
 					li		a0,	0					# Não é crash
 					li		a1,	4					# Som 4
 					j		playerColHandler.end

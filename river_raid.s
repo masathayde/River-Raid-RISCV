@@ -10,7 +10,7 @@
 .eqv BANK_COLOR 0x10
 .eqv RVCL 0xb0 # river color
 .eqv SCORE_COLOR 0x0b
-.eqv SHIP 0x05 # ship color
+.eqv SHIP 0x00 # ship color
 .eqv PLNE 0x90 # plane color
 .eqv FUEL 0x26 # fuel color
 .eqv LEUF 0x62 # bad fuel color
@@ -27,6 +27,7 @@
 .eqv M_UP 119 # w
 .eqv M_DOWN 115 # s
 .eqv M_FIRE 101 # e
+.eqv M_QUIT 48 # 0
 
 .eqv MAX_BANK_SIZE 7
 .eqv MAX_DIFFICULTY 10
@@ -36,7 +37,7 @@
 .eqv PLAYER_MISSILE DELAY 15 # Quanto tempo deve-se esperar para poder atirar de novo (em ciclos)
 .eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
 .eqv INITIAL_LIVES 4
-.eqv INITIAL_FUEL 200
+.eqv INITIAL_FUEL 300
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -45,6 +46,11 @@
 .eqv VGAADDRESSINI1     0xFF100000
 .eqv VGAADDRESSFIM1     0xFF112C00 
 .eqv VGAFRAMESELECT	0xFF200604
+.eqv KDMMIO_Ctrl	0xFF200000
+.eqv KDMMIO_Data	0xFF200004
+.eqv JOYSTICK_BUTTON	0xFF20021C # Pino 7
+.eqv JOYSTICK_VX	0xFF200200 # Pino 0
+.eqv JOYSTICK_VY	0xFF200204 # Pino 1
 
 .text
 
@@ -52,6 +58,10 @@
 Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas do sistema ECALL
  					csrrw 		zero,5,tp 		# seta utvec (reg 5) para o endereço tp
  					csrrsi 		zero,0,1 		# seta o bit de habilitação de interrupção em ustatus (reg 0)
+ 					
+ 					li		t0,	JOYSTICK_VX	# Inicializamos o endereço em zero, para verificação no menu
+ 					sw		zero,	0(t0)
+ 	mainMenu:			call		gameMenu
  					
 # .d8888b.  8888888888 88888888888 888     888 8888888b.       8888888 888b    888 8888888 .d8888b. 8888888        d8888 888      
 # d88P  Y88b 888            888     888     888 888   Y88b        888   8888b   888   888  d88P  Y88b  888         d88888 888      
@@ -105,7 +115,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					sb		zero,	0(t4)
 					la		t5,	playerFuel
 					li		t6,	INITIAL_FUEL
-					sb		t6,	0(t5)
+					sh		t6,	0(t5)
 					
 					# PLAYFIELD #
 					la		t0,	pfWriteOffset
@@ -379,7 +389,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							li		a7,	104
 							ecall							
 							la		t0,	playerFuel
-							lbu		a0,	0(t0)
+							lh		a0,	0(t0)
 							li		a1,	70
 							li		a2,	170
 							li		a3,	INFO_COLOR
@@ -417,7 +427,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							
 							# Printando a pontuação
 							la		t0,	playerScore
-							lbu		a0,	0(t0)
+							lw		a0,	0(t0)
 							li		a1,	230
 							li		a2,	170
 							li		a3,	SCRNUM_COLOR
@@ -570,11 +580,15 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							addi		a4,	s2,	16		# Endereço da posição X
 							addi		a5,	s2,	18		# Endereço da posição Y
 							addi		a6,	s2,	20		# Endereço do tipo de objeto
+							lbu		s6,	20(s2)			# Tipo guardado para rotina de atualização de score
 							call		objectColHandler
-							beq		s5,	zero,	Update.objectUpdate.nope # Se houver colisão, tocamos som
+							beq		s5,	zero,	Update.objectUpdate.nope # Se houver colisão, tocamos som e atualizamos o score
 							li		a0,	1
-							call		soundSelect							
-										
+							call		soundSelect			# Rotina de seleção de som baseada em sistema de prioridade simples
+							la		a0,	playerScore
+							mv		a1,	s5
+							mv		a2,	s6
+							call		scoreUpdater			# Atualiza score																	
 							
 	Update.objectUpdate.nope:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
@@ -794,8 +808,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						call		getInputRars
 						
 						
-						li		a0,	0xFF200200
-						li		a1,	0xFF200204
+						li		a0,	JOYSTICK_VX
+						li		a1,	JOYSTICK_VY
 						la		t0,	playerSpeedX
 						lbu		a2,	0(t0)
 						la		a3,	playerPosX
@@ -863,10 +877,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	###############
 	# COMBÚSTIVEL #
 	###############
-						la		t0,	playerFuel			# Endereço onde está a quantidade de combústivel
-						lbu		s1,	0(t0)				# Pegamos o valor
+						la		s0,	playerFuel			# Endereço onde está a quantidade de combústivel
+						lh		s1,	0(s0)				# Pegamos o valor
 						la		t2,	fuelMax				# Quantidade máxima de combústivel
-						lbu		t3,	0(t2)
+						lhu		t3,	0(t2)
 						ble		s1,	t3,	Player.fuel.noAdjust	# Se o combústivel estiver acima do normal, ajustamos
 						mv		s1,	t3				# Limitado à quantidade máxima
 	Player.fuel.noAdjust:			la		t2,	fuelLossRate			# Taxa de perda de combústivel
@@ -875,11 +889,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						bgt		s1,	zero,	Player.fuel.bge0	# Se cair abaixo de 0, é derrota
 						li		s1,	0
 						la		t2,	playerCrashed
-						li		t3,	1
+						li		a0,	1
 						sb		t3,	0(t2)				# Setamos a booleana de derrota
-						mv		a0,	t3
-						call		soundSelect					
-	Player.fuel.bge0:			sb		s1,	0(t0)				# Salvamos quantidade atualizada																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			
+						call		soundSelect				# a0 = 1, o som de explosão	
+	Player.fuel.bge0:			sh		s1,	0(s0)				# Salvamos quantidade atualizada																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			
 ##########################																		
 #  _____  ________  ___
 # /  ___||  _  |  \/  |
@@ -944,9 +957,54 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						
 						# Fim do programa
-						li		a7,	10				
+	Quit:					li		a7,	10				
 						ecall
-					
+
+#############################
+# Atualizador de score			
+# a0: Endereço do score
+# a1: Booleana de colisão
+# a2: Tipo do objeto
+############################					
+scoreUpdater:					beq		a1,	zero,	scoreUpdater.end	# Se não houve colisão, não é necessário atualizar o score
+						lw		t6,	0(a0)				# Já pegamos o valor do score
+						li		t0,	0
+						bne		a2,	t0,	scoreUpdater.test1	# Fuel
+						addi		t6,	t6,	80			# Vale 80 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+	
+	scoreUpdater.test1:			li		t0,	1
+						bne		a2,	t0,	scoreUpdater.test2	# Heli
+						addi		t6,	t6,	60			# Vale 60 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+	
+	scoreUpdater.test2:			li		t0,	2
+						bne		a2,	t0,	scoreUpdater.test3	# Navio
+						addi		t6,	t6,	30			# Vale 30 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+
+	scoreUpdater.test3:			li		t0,	3
+						bne		a2,	t0,	scoreUpdater.test4	# Avião
+						addi		t6,	t6,	100			# Vale 100 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+	
+	scoreUpdater.test4:			li		t0,	4
+						bne		a2,	t0,	scoreUpdater.test99	# Bad Fuel
+						addi		t6,	t6,	80			# Vale 80 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+						
+	scoreUpdater.test99:			li		t0,	99
+						bne		a2,	t0,	scoreUpdater.end	# Ponte
+						addi		t6,	t6,	500			# Vale 500 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+
+	scoreUpdater.end:			ret				
 
 #############################
 # Rotina de derrota			
@@ -1015,7 +1073,7 @@ defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogad
 						lbu		a4,	0(t0)
 						li		a7,	104
 						ecall							# Printa mensagem de alerta na tela
-						#ebreak
+						
 						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
 						lbu		t1,	0(t0)
 						li		t0,	VGAFRAMESELECT
@@ -1031,6 +1089,165 @@ defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogad
 	defeatHandler.gameOver: li a7, 10
 				ecall # placeholder						
 	
+#############################
+# Menu principal			
+############################
+gameMenu:					la		t0,	frameToShow			# Trocamos de frame
+						la		t2,	framePtr			# Ponteiro para o frame no qual será desenhado o mapa
+						lbu		t1,	0(t0)
+						xori		t1,	t1,	1			# O uso de xor inverte o bit
+						sb		t1,	0(t0)				# Guardamos o valor de volta em frameToShow
+						li		t3,	VGAADDRESSINI0			# Inicialmente escolhemos o frame 0
+						beq		t1,	zero,	gameMenu.selectF0	# Mas é realmente o frame 0?
+						li		t3,	VGAADDRESSINI1			# Não, então escolhe-se frame 1						
+	gameMenu.selectF0:			sw		t3,	0(t2)				# Salvar em framePtr
+	
+						la		t0,	framePtr
+						lw		t1,	0(t0)				# Endereço de pintura
+						li		t6,	19200				# Número de words para pintar
+	gameMenu.blackout:			beq		t6,	zero,	gameMenu.blackout.end						
+	
+							li		t2,	0			# Cor preta
+							sw		t2,	0(t1)			# Pintando
+							addi		t1,	t1,	4		# Próxima word
+							addi		t6,	t6,	-1		# i--
+							j		gameMenu.blackout
+							
+						# Printando todas as mensagens
+	gameMenu.blackout.end:			la		a0,	titleString
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	90				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall							# Printa mensagem de na tela
+						
+						la		a0,	subtitleString
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	100				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall							# Printa mensagem de na tela
+						
+						la		a0,	promptString
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	110				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall
+						
+						la		a0,	promptString2
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	120				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall
+						
+						la		a0,	hiscoreString
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	200				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall							# Printa mensagem de na tela
+						
+						la		t0,	HiScore
+						lw		a0,	0(t0)
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	210				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	136
+						ecall							# Printa mensagem de na tela
+						
+						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
+						lbu		t1,	0(t0)
+						li		t0,	VGAFRAMESELECT
+						sb		t1,	0(t0)
+	
+						# Loop infinito enquanto se espera o input do usuário					
+	gameMenu.waitInput:			li		t0,	JOYSTICK_VX
+						lw		t1,	0(t0)				# Testando para saber se o joystick está conectado
+						beq		t1,	zero,	gameMenu.waitInput.noStick						
+						li		t0,	KDMMIO_Ctrl
+						li		t5,	JOYSTICK_BUTTON
+						lw		t1,	0(t0)				# Bit de controle do teclado
+						lw		t4,	0(t5)				# Botão de stick, ativo em 0
+						andi		t1,	t1,	1			# Bitmask
+						bne		t1,	zero,	gameMenu.kbInput	# Voltamos a verificar se não tiver input
+						beq		t4,	zero,	gameMenu.waitInput	# Se não estiver ativo, voltamos ao começo do loop
+						j		gameMenu.gameStart			# Se o botão foi pressionado, então começamos o jogo
+						
+	gameMenu.waitInput.noStick:		li		t0,	KDMMIO_Ctrl
+						lw		t1,	0(t0)				# Bit de controle do teclado
+						andi		t1,	t1,	1			# Bitmask
+						bne		t1,	zero,	gameMenu.kbInput	# Voltamos a verificar se não tiver input
+						j		gameMenu.waitInput			# Se o botão foi pressionado, então começamos o jogo						
+						
+	gameMenu.kbInput:			li		t0,	KDMMIO_Data			# Recebemos dado do teclado
+						lw		t1,	0(t0)				# Pegamos o input
+						li		t2,	M_QUIT
+						beq		t1,	t2,	gameMenu.quitter	# Pulamos para rotina de saída, se for o caso
+						li		t2,	M_FIRE
+						beq		t1,	t2,	gameMenu.gameStart	# Começamos o jogo, se for o caso
+						j		gameMenu.waitInput			# Em qualquer outro caso, voltamos ao começo para esperar novo input
+	
+	gameMenu.quitter:			la		t0,	framePtr
+						lw		t1,	0(t0)				# Endereço de pintura
+						li		t6,	19200				# Número de words para pintar
+	gameMenu.quitter.blackout:		beq		t6,	zero,	gameMenu.quitter.blackout.end						
+	
+							li		t2,	0			# Cor preta
+							sw		t2,	0(t1)			# Pintando
+							addi		t1,	t1,	4		# Próxima word
+							addi		t6,	t6,	-1		# i--
+							j		gameMenu.quitter.blackout
+							
+						# Printando mensagem de saída
+	gameMenu.quitter.blackout.end:		la		a0,	quitString					
+						li		a1,	100				# Coordenada X de escrita
+						li		a2,	110				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall
+						j		Quit					# Volta para a rotina principal	
+						
+	
+	gameMenu.gameStart:			la		t0,	framePtr
+						lw		t1,	0(t0)				# Endereço de pintura
+						li		t6,	19200				# Número de words para pintar
+	gameMenu.gameStart.blackout:		beq		t6,	zero,	gameMenu.gameStart.blackout.end						
+	
+							li		t2,	0			# Cor preta
+							sw		t2,	0(t1)			# Pintando
+							addi		t1,	t1,	4		# Próxima word
+							addi		t6,	t6,	-1		# i--
+							j		gameMenu.gameStart.blackout
+							
+						# Printando mensagem de saída
+	gameMenu.gameStart.blackout.end:	la		a0,	readyString
+						li		a1,	135				# Coordenada X de escrita
+						li		a2,	100				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall							# Printa mensagem de alerta na tela
+						li		a0,	2000
+						li		a7,	32
+						ecall							# Esperamos mais 2 segundos antes de entrar no jogo
+						ret							
 							
 #######################
 # Includes

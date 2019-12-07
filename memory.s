@@ -48,11 +48,11 @@
 	.align 2
 	playerCrrSpr: .word 0 # Endereço do sprite atual do avião
 	playerScore: .word 0 # Pontuação atual
+	playerFuel: .half INITIAL_FUEL
 	playerPosX: .half 120
 	playerLives: .byte INITIAL_LIVES
 	playerPosY: .byte 155 # Normalmente, não deve mudar
 	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
-	playerFuel: .byte INITIAL_FUEL
 	playerShotCount: .byte 0 # Contador de tiros
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
 	playerSpeedX: .byte 4 # Velocidade em pixels/frame
