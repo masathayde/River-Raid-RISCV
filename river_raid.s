@@ -26,12 +26,14 @@
 .eqv M_FIRE 101 # e
 
 .eqv MAX_BANK_SIZE 7
-.eqv MAX_DIFFICULTY 10											
+.eqv MAX_DIFFICULTY 10
+.eqv PLAYER_HEIGHT 20
+.eqv PLAYER_WIDTH 20											
 .eqv PLAYER_MAX_MISSILE 20   # Número máximo de tiros na tela
 .eqv PLAYER_MISSILE DELAY 15 # Quanto tempo deve-se esperar para poder atirar de novo (em ciclos)
 .eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
-.eqv PLAYER_HEIGHT 20 # Medidas do sprite, em pixels
-.eqv PLAYER_WIDTH 20 
+.eqv INITIAL_LIVES 4
+.eqv INITIAL_FUEL 100
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -41,130 +43,6 @@
 .eqv VGAADDRESSFIM1     0xFF112C00 
 .eqv VGAFRAMESELECT	0xFF200604
 
-.data
-	# Tentar agrupar todos os words no começo para não precisar usar .align
-	Arg8: 	.word 0 # Caso seja necessário mais de 7 argumentos
-	Arg9: 	.word 0 # Pois é
-	Arg10: 	.word 0 # Ahan
-
-#########################################################################################################################
-#  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ____________ _____ _   _ _____ ___________  ___  _____ _____ 
-# | | | |/ _ \ | ___ \_   _|/ _ \| | | |  ___|_   _/  ___| | ___ \ ___ \_   _| \ | /  __ \_   _| ___ \/ _ \|_   _/  ___|
-# | | | / /_\ \| |_/ / | | / /_\ \ | | | |__   | | \ `--.  | |_/ / |_/ / | | |  \| | /  \/ | | | |_/ / /_\ \ | | \ `--. 
-# | | | |  _  ||    /  | | |  _  | | | |  __|  | |  `--. \ |  __/|    /  | | | . ` | |     | | |  __/|  _  | | |  `--. \
-# \ \_/ / | | || |\ \ _| |_| | | \ \_/ / |___ _| |_/\__/ / | |   | |\ \ _| |_| |\  | \__/\_| |_| |   | | | |_| |_/\__/ /
-#  \___/\_| |_/\_| \_|\___/\_| |_/\___/\____/ \___/\____/  \_|   \_| \_|\___/\_| \_/\____/\___/\_|   \_| |_/\___/\____/ 
-#########################################################################################################################                                                                                                                                                                                                                  	
-
-	gameTime: .word 0
-	framePtr: .word 0
-	HiScore: .word 0
-	gameLevel: .word 1				# Número de seções vencidas ( número de pontes geradas)
-	difficulty: .byte 0				# Dificuldade atual
-	maxDiffic: .byte 5				# Dificuldade máxima
-	difficInterv: .byte 1				# Número de seções para que haja aumento de dificuldade
-	
-	
-	nextSound: .byte 0				# Variável que controla qual som será tocado a seguir
-	
-	
-	
-	frameToShow: .byte 1 # Frame do VGA selecionado										
-	scrollSpeed: .byte 2 # Velocidade de scroll vertical atual
-	
-	scrollSpeedNormal: .byte 2 # Velocidade de scroll vertical padrão
-	scrollSpeedFast: .byte 4 # Velocidade de scroll vertical rápida
-	scrollSpeedSlow: .byte 1 # Velocidade devagar
-
-	blockWriteOffset: .byte 0
-	blockCurrent: .byte 0x07 # Cada parte de uma dos blocos visíveis é representada por um byte
-	blockPrevious: .byte 0
-	blockCounter: .byte 0 # Número de blocos criados
-	
-	lineDrawnCounter: .byte 0 # Contador do número de linhas desenhado, para decidirmos se precisamos de um novo bloco
-
-######################################################################################################################	
-#  _   _  ___  ______ _____  ___  _   _ _____ _____ _____  ______ _____     ___  _____ _____   ___ ______ ___________ 
-# | | | |/ _ \ | ___ \_   _|/ _ \| | | |  ___|_   _/  ___| |  _  \  _  |   |_  ||  _  |  __ \ / _ \|  _  \  _  | ___ \
-# | | | / /_\ \| |_/ / | | / /_\ \ | | | |__   | | \ `--.  | | | | | | |     | || | | | |  \// /_\ \ | | | | | | |_/ /
-# | | | |  _  ||    /  | | |  _  | | | |  __|  | |  `--. \ | | | | | | |     | || | | | | __ |  _  | | | | | | |    / 
-# \ \_/ / | | || |\ \ _| |_| | | \ \_/ / |___ _| |_/\__/ / | |/ /\ \_/ / /\__/ /\ \_/ / |_\ \| | | | |/ /\ \_/ / |\ \ 
-#  \___/\_| |_/\_| \_|\___/\_| |_/\___/\____/ \___/\____/  |___/  \___/  \____/  \___/ \____/\_| |_/___/  \___/\_| \_|
-#######################################################################################################################
-	.align 2
-	playerCrrSpr: .word 0 # Endereço do sprite atual do avião
-	playerScore: .word 0 # Pontuação atual
-	playerPosX: .half 120
-	playerLives: .byte 4
-	playerPosY: .byte 155 # Normalmente, não deve mudar
-	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
-	playerFuel: .byte 100
-	playerShotCount: .byte 0 # Contador de tiros
-	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
-	playerSpeedX: .byte 4 # Velocidade em pixels/frame
-	playerShotCD: .byte 0 # Número de frames a esperar para atirar de novo
-	playerCrashed: .byte 0 # Usada para rotina de perda de vida
-                                                                                                      
-##########################################################                                                                                                                                                                                                                
-# ______ _       _____   _______ _____ _____ _    ______ 
-# | ___ \ |     / _ \ \ / /  ___|_   _|  ___| |   |  _  \
-# | |_/ / |    / /_\ \ V /| |_    | | | |__ | |   | | | |
-# |  __/| |    |  _  |\ / |  _|   | | |  __|| |   | | | |
-# | |   | |____| | | || | | |    _| |_| |___| |___| |/ / 
-# \_|   \_____/\_| |_/\_/ \_|    \___/\____/\_____/___/  
-##########################################################                                                                                                               		
-	pfWriteOffset: .byte 0
-	pfReadStartOffset: .byte 160
-	pfReadEndOffset: .byte 0
-	playfield: .space 192										# 160 linhas são visíveis ao mesmo tempo, 32 a mais para armazenar novo bloco
-
-##############################################	
-# ___________   ___ _____ _____ _____ _____ 
-# |  _  | ___ \ |_  |  ___|_   _|  _  /  ___|
-# | | | | |_/ /   | | |__   | | | | | \ `--. 
-# | | | | ___ \   | |  __|  | | | | | |`--. \
-# \ \_/ / |_/ /\__/ / |___  | | \ \_/ /\__/ /
-#  \___/\____/\____/\____/  \_/  \___/\____/ 
-##############################################                                                                                     		
-	.align 2
-	objectPtrList: .word object0, object1, object2, object3, object4, object5
-	# Desatualizado
-	# 00 objectBitmapPtr0: .word # endereço do frame 0
-	# 04 objectBitmapPtr1: .word # endereço do frame 1
-	# 08 objectCollision: .word # endereço da rotina de colisão
-	# 12 objectAction: .word # endereço de rotina especial
-	# 14 objectType: .byte
-	# 15 objectIsAnim: .byte		
-	# 16 objectXpos: .half
-	# 18 objectYpos: .byte
-	# 19 objectXspeed: .byte
-	# 20 objectHeight: .byte
-	# 21 objectWidth: .byte
-	# 22 objectDirection: .byte
-	# 23 objectAnimationCounter: .byte # Contador de frames de animação
-	# 24 objectAnimationTime: .byte # Números de frames até que seja executado a rotina em objectAction
-	.align 2
-	object0: .space 32
-	object1: .space 32
-	object2: .space 32
-	object3: .space 32
-	object4: .space 32
-	object5: .space 32
-	objectListWriteIdx: .byte 0	# Índice do vetor de objetos onde será escrito o próximo
-	
-	# shotBitmap: .word
-	# shotXcoord: .half
-	# shotYcoord: .half
-	# shotYspeed: .byte
-	# shotHeight: .byte
-	# shotWidth: .byte
-	# shotExists: .byte
-	shotCreate: .byte 0		# Se for 1 no frame atual, criamos um tiro novo
-	shotWriteIdx: .byte 0		# Índice para escrita
-	.align 2
-	shotVector: .space 400		# Espaço para 20 tiros
-	
-	
 .text
 
 # Setup inicial
@@ -179,7 +57,21 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #     "Y88b. 888            888     888     888 8888888P"         888   888 Y88b888   888  888         888      d88P  888 888      
 #       "888 888            888     888     888 888               888   888  Y88888   888  888    888  888     d88P   888 888      
 # Y88b  d88P 888            888     Y88b. .d88P 888               888   888   Y8888   888  Y88b  d88P  888    d8888888888 888      
-#  "Y8888P"  8888888888     888      "Y88888P"  888             8888888 888    Y888 8888888 "Y8888P" 8888888 d88P     888 88888888 
+#  "Y8888P"  8888888888     888      "Y88888P"  888             8888888 888    Y888 8888888 "Y8888P" 8888888 d88P     888 88888888
+#
+# 	Resetando todos as variáveis para reínicio do jogo. Estas variáveis só são resetadas quando um novo jogo é iniciado no menu principal.
+
+	NewGameSetup:			la		t0,	gameLevel
+					li		t1,	1
+					sw		t1,	0(t0)
+					la		t2,	difficulty
+					sw		zero,	0(t2)
+					la		t3,	playerScore
+					sw		zero,	0(t3)	
+					la		t4,	playerLives
+					li		t5,	INITIAL_LIVES
+					sb		t5,	0(t4)
+
 
 	InitSetup:			
 # ______ _____ _____ _____ _____ 
@@ -189,16 +81,42 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # | |\ \| |___/\__/ / |___  | |  
 # \_| \_\____/\____/\____/  \_/  
 #	
-#	Resetando todos as variáveis..					
+#	Resetando todos as variáveis para reínicio do jogo. Estas variáveis sempre são resetadas depois de uma perda de vida.
+
+					# JOGADOR #										
 					la		t0,	playerCrrSpr				
 					la		t1,	Plyr_0					# Sprite do jogador padrão
 					sw		t1,	0(t0)					# Salvando no espaço correto
+					la		t2,	playerPosX
+					li		t3,	120					# Coordenada X padrão do jogador
+					sh		t3,	0(t2)
+					la		t0,	playerDirection
+					sb		zero,	0(t0)
+					la		t1,	playerShotCount
+					sb		zero,	0(t1)
+					la		t2,	playerCollision
+					sb		zero,	0(t2)
+					la		t3,	playerShotCD
+					sb		zero,	0(t3)
+					la		t4,	playerCrashed
+					sb		zero,	0(t4)
+					la		t5,	playerFuel
+					li		t6,	INITIAL_FUEL
+					sb		t6,	0(t5)
 					
+					# PLAYFIELD #
+					la		t0,	pfWriteOffset
+					sb		zero,	0(t0)
+					la		t1,	pfReadStartOffset
+					li		t2,	160					# Offset de leitura padrão
+					sb		t2,	0(t1)
+					la		t3,	blockCounter
+					sb		zero,	0(t3)
 					
+					# OBJETOS #
 					la		t0,	objectListWriteIdx			# Resetando o índice da lista de objetos
 					li		t1,	0
-					sb		t1,	0(t0)
-					
+					sb		t1,	0(t0)				
 					la		t0,	object0					# Colocando zero em todos os objetos para indicar que não foram criados ainda
 					sw		zero,	0(t0)
 					la		t1,	object1
@@ -212,6 +130,28 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					la		t5,	object5
 					sw		zero,	0(t5)
 					
+					# TIROS #
+					la		t0,	shotCreate
+					sb		zero,	0(t0)
+					la		t1,	shotWriteIdx
+					sb		zero,	0(t1)
+					la		t6,	shotVector
+					li		t0,	100					# Tamanho do vetor de tiros, em words
+	Reset.shotVector:		beq		t0,	zero,	Reset.shotVector.end
+							
+						sw		zero,	0(t6)
+						addi		t0,	t0,	-1
+						addi		t6,	t6,	4
+						j		Reset.shotVector
+	Reset.shotVector.end:
+					
+			
+					la		t0,	nextSound
+					sb		zero,	0(t0)
+					la		t1,	blockWriteOffset
+					sb		zero,	0(t1)
+					la		t2,	lineDrawnCounter
+					sb		zero,	0(t2)
 					
 
 
@@ -220,7 +160,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	InitSetup.genMap.0:		beq		s0,	zero,	InitSetup.genMap.0.end		# (while i > 0)
 						
 						la		t0,	blockCurrent
-						li		t1,	0x07				# Um bloco sem ilha e com a maior largura possível
+						li		t1,	0x07				# Um bloco ponte
 						sb		t1,	0(t0)				# Salvamos no endereço do bloco atual
 		
 						la		a0,	playfield
@@ -479,7 +419,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						sb		zero,	0(t1)				# Retornamos a booleana de criação para 0
 						
 						# Som - toda vez que criar um tiro, pedir para tocar o som
-						li		a0,	1
+						li		a0,	2
 						call		soundSelect				# Tocamos o som de tiro						
 									
 						
@@ -569,7 +509,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							addi		a6,	s2,	20		# Endereço do tipo de objeto
 							call		objectColHandler
 							beq		s5,	zero,	Update.objectUpdate.nope # Se houver colisão, tocamos som
-							li		a0,	2
+							li		a0,	1
 							call		soundSelect							
 										
 							
@@ -926,1530 +866,100 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						# Fim do programa
 						li		a7,	10				
-						ecall	
-			
-
-############################################################
-# Criar bloco no próximo espaço de 32 linhas disponível
-# a0: Endereço do bloco atual (que será substituído)
-# a1: Endereço para armazenar bloco atual após substituição
-# a2: Número máximo de espaços de terra vindo da ponta
-# a3: Número mínimo de espaços de rios
-# a4: Largura mínima de abertura
-############################################################
-createBlock:				addi		sp,	sp,	-20				# Guardando registradores anteriores
-					sw		s0,	0(sp)
-					sw		s1,	4(sp)
-					sw		s2,	8(sp)
-					sw		s3,	12(sp)
-					sw		s4,	16(sp)
+						ecall
 					
-					mv		s0,	a0					# Salvando os valores para não serem alterados na ecall de RNG
-					mv		s1,	a1
-									
-					lbu		t6,	0(s0)					# Carregamos ID do bloco atual, para criarmos o próximo					
-					li		t0,	0x0000000f				# Bitmask para separar os números correspondentes à largura do rio do bloco anterior
-					and		s2,	t6,	t0				# Número de blocos de rio
-					li		t0,	0x000000f0				# Agora isolando o valor de blocos de terra
-					and 		s3,	t6,	t0				# Aplicação do bitmask
-					srli		s3,	s3,	4				# Movendo os bits para a direita
-					
-					
-	# Gerando o primeiro número aleatório
-	# Agora precisamos levar a dificuldade em consideração na geração de blocos
-	# a2 = número máximo de blocos de terra
-	# a4 = número mínimo da abertura entre blocos
-	# No algoritmo atual,  a largura mínima extra é sempre aplicada à esquerda		
-					li		a7,	41					# Gerando o número
-					ecall
-					add		t1,	s2,	s3				# t1 = a+b
-					blt		t1,	a2,	createBlock.minIsAB		# Vemos se a+b é menor que o número máximo
-					mv		t1,	a2					# Se não for, trocamos por a2									# a' deve estar em [0, min(a+b, a2) ), para isso usamos a função mo
-	createBlock.minIsAB:		sub		t1,	t1,	a4				# Levamos a largura mínima em consideração
-					bgt		t1,	zero,	createBlock.ABisOK		# Caso o valor seja negativo após a operação anterior, haverá erro na próx. operação
-					li		t1,	1					# Acertamos o valor de a+b, se for negativo
-	createBlock.ABisOK:		remu		s4,	a0,	t1				# a' = random mod min(a+b,a2)					
-	# A decisão do segundo número depende do valor do primeiro (borda esquerda). Precisamos ter certeza que não será criado um bloco impossível de ser atravessado.
-					ecall								# a7 não foi alterado, pegamos novo aleatório
-								
-	# Fórmula: b' = R mod (7 - max(a', a)) + m + 1
-	# m = 0, se a' >= a ; m = a - a', se a' < a
-					
-					# a1 = max(a', a)
-					mv		a1,	s4					# a1 = a'
-					mv		t1,	zero					# t1 = m = 0
-					bge		s4,	s3,	createBlock.noAdjust		# Se a' >= a, pulamos
-					mv		a1,	s3					# a1 = a
-					sub		t1,	s3,	s4				# m = a' - a
-	createBlock.noAdjust:		li		t0,	7
-					sub		t0,	t0,	a1				# t0 = 7 - max(a', a)
-					remu		a0,	a0,	t0				# a0 = R mod (7 - max(a', a))
-					add		a0,	a0,	t1				# a0 += m
-					addi		a0,	a0,	1				# a0++ ; Fórmula completa
-					add		t0,	t0,	t1				# Para calcular o valor máximo de espaços de rio possível: (7 - max(a', a)) + m
-	# Considerando a dificuldade
-	# a3: número mínimo de espaços de rio
-					bge		a0,	a3,	createBlock.riverOK		# Se o valor aleatório calculado for maior que o mínimo permitido, OK
-					mv		a0,	a3					# Se não, trocamos para o valor mínimo
-					blt		a0,	t0,	createBlock.riverOK		# Mas também precisamos ter certeza que o valor mínimo não é maior que o máximo..
-					mv		a0,	t0					# ..de espaços neste bloco
-					
-	# Hora de colocar os dois números em um byte só
-	createBlock.riverOK:		slli		s4,	s4,	4				# Colocamos a borda esquerda na parte superior do byte
-					or		a0,	a0,	s4				# Juntando os dois valores					
-					sb		t6,	0(s1)					# Bloco atual se torna anterior
-					sb		a0,	0(s0)					# Novo bloco gerado
-					
-					lw		s0,	0(sp)
-					lw		s1,	4(sp)
-					lw		s2,	8(sp)
-					lw		s3,	12(sp)
-					lw		s4,	16(sp)
-					addi		sp,	sp,	20				# Desempilhar
-					ret
-
-########################################					
-# Escreve o novo bloco no buffer do mapa
-# a0: Endereço do buffer do mapa
-# a1: Offset de escrita
-# a2: ID do novo bloco
-#######################################				
-writeBlockToPlayfield:			add		a0,	a0,	a1				# Adicionamos endereço ao offset, para acharmos o endereço de escrita
-					li		t0,	0					# t0 = i = 0
-					li		t1,	32					# Vamos escrever 32 linhas					
-	writeBlockToPlayfield.L0:	beq		t0,	t1,	writeBlockToPlayfield.L0.end	# while (i < 32)
-						
-						sb		a2,	0(a0)				# Linha recebe o ID do bloco
-						addi		a0,	a0,	1			# Próximo bloco
-						addi		t0,	t0,	1			# i++
-						j		writeBlockToPlayfield.L0
-	writeBlockToPlayfield.L0.end:	ret
-	
-
-#####################################
-# Desenha o mapa na tela
-# a0: Endereço do buffer do mapa
-# a1: Offset para começo da leitura
-# a2: Offset para fim da leitura
-# a3: Endereço do VGA
-####################################
-# Leitura acontece do endereço maior para o menor
-# 160 linhas são desenhadas
-renderPlayfield:			li		t0,	0					# i = 0
-					li		t1,	160					# Número de linhas a desenhar					
-					li		a5,	BANK_COLOR_4
-					li		a6,	RIVER_COLOR_4
-					add		a1,	a0,	a1				# Começamos a ler o mapa daqui
-					add		a2,	a0,	a2				# Aqui terminamos				
-	renderPlayfield.drawLine:	beq		t0,	t1,	renderPlayfield.drawLine.end	# while (i < 160)
-						
-						sw		a5,	0(a3)				# O primeiro segmento horizontal é sempre terra			
-						sw		a5,	4(a3)
-						sw		a5,	8(a3)
-						sw		a5,	12(a3)
-						sw		a5,	16(a3)
-						addi		a3,	a3,	20			# Incrementamos o endereço da memória VGA
-						
-						lbu		t2,	0(a1)				# Pegando a ID da linha
-						li		t3,	0x0000000f			# Bitmask para separar os números correspondentes à largura do rio
-						and		t3,	t2,	t3			# Borda direita 
-						li		t4,	0x000000f0
-						and		t4,	t2,	t4			# Borda esquerda
-						srli		t4,	t4,	4
-						
-						# Pintando terra extra.
-						li		t5,	0				# j = 0
-	renderPlayfield.drawLeftBank:		beq		t5,	t4,	renderPlayfield.drawRiver
-						
-							sw		a5,	0(a3)			# Pintando mais terra
-							sw		a5,	4(a3)
-							sw		a5,	8(a3)
-							sw		a5,	12(a3)
-							sw		a5,	16(a3)	
-							addi		a3,	a3,	20
-							addi		t5,	t5,	1		# j++
-							j		renderPlayfield.drawLeftBank
-							
-	renderPlayfield.drawRiver:		li		t5,	0				# j = 0
-	renderPlayfield.drawRiverLoop:		beq		t5,	t3,	renderPlayfield.drawIsle
-	
-							sw		a6,	0(a3)			# Pintando rio
-							sw		a6,	4(a3)
-							sw		a6,	8(a3)
-							sw		a6,	12(a3)
-							sw		a6,	16(a3)
-							addi		a3,	a3,	20
-							addi		t5,	t5,	1		# j++
-							j		renderPlayfield.drawRiverLoop
-							
-	renderPlayfield.drawIsle:		li		t5,	0				# j = 0
-						li		t6,	7				# Número restante de terra é igual 7 - a - b
-						sub		t6,	t6,	t3
-						sub		t6,	t6,	t4
-	renderPlayfield.drawIsleLoop:		beq		t5,	t6,	renderPlayfield.mirror
-	
-							sw		a5,	0(a3)			# Pintando mais terra
-							sw		a5,	4(a3)
-							sw		a5,	8(a3)
-							sw		a5,	12(a3)
-							sw		a5,	16(a3)
-							addi		a3,	a3,	20
-							addi		t5,	t5,	1		# j++
-							j		renderPlayfield.drawIsleLoop
-							
-	renderPlayfield.mirror:			li		t5,	0
-						li		t6,	40				# Agora espelhamos a parte esquerda (40 partes de 4 pixels)
-						mv		a7,	a3				# a7 : parte esquerda, fazendo o caminho de volta, do meio até a ponta esquerda da linha
-						addi		a7,	a7,	-4
-	renderPlayfield.mirrorLoop:		beq		t5,	t6,	renderPlayfield.drawLine.next # while ( j < 40)	
-							
-							lw		t4,	0(a7)
-							sw		t4,	0(a3)
-							addi		a7,	a7,	-4
-							addi		a3,	a3,	4
-							addi		t5,	t5,	1		# j++
-							j		renderPlayfield.mirrorLoop
-							
-	renderPlayfield.drawLine.next:		addi		a1,	a1,	-1			# Próxima linha. Lembrando que as linhas são lidas de baixo pra cima
-						bge		a1,	a0,	renderPlayfield.drawLine.noAdjust # Se sairmos do endereço do mapa, faz-se um "wrap-around" e volta-se ao fim do mapa
-						addi		a1,	a0,	191			# Último endereço do mapa (última linha)
-	renderPlayfield.drawLine.noAdjust:	addi		t0,	t0,	1											
-						j		renderPlayfield.drawLine
-			
-	# Pintamos a parte inferior da tela, onde irão as informações do jogo																																																																																
-	renderPlayfield.drawLine.end:		li		t1,	6400				# Número de pedaços a pintar
-						li		a5,	SCORE_COLOR_4	
-	renderPlayfield.drawBottom:		beq		t1,	zero,	renderPlayfield.drawBottom.end
-							
-							sw		a5,	0(a3)
-							addi		a3,	a3,	4
-							addi		t1,	t1,	-1
-							j		renderPlayfield.drawBottom
-						
-	renderPlayfield.drawBottom.end:	ret
-						
-
-				
-#############################
-# Desenha um objeto na tela				
-# a0: Coordenada X
-# a1: Coordenada Y
-# a2: Altura do objeto
-# a3: Largura do objeto
-# a4: Endereço do bitmap do objeto
-# a5: Endereço do VGA
-# a6: Desenhar invertido (1 ou 0)
-# a7: Endereço da booleana de colisão
-# Testa colisão com tiros
-############################
-
-drawObject:				addi		sp,	sp,	-4
-					sw		s0,	0(sp)
-					li		s0,	0				# Váriavel que indica se já houve colisão, para não testarmos de novo se houver
-
-					blt		a1,	zero,	drawObject.finish 	# Se Y < 0, objeto não é visível
-					li		t0,	160				# Número máximo de linhas visíveis
-					sub		t1,	a1,	a2			# t1 = coordenada do topo do objeto
-					bgt		t1,	t0,	drawObject.finish	# Se o topo estiver acima de 160, objeto não é visível
-
-	drawObject.start:		beq		a2,	zero,	drawObject.finish		# while (height > 0 )
-						
-						# Calculando o endereço no VGA
-						li		t0,	320
-						mul		t0,	a1,	t0			# Y*320
-						add		t0,	t0,	a0			# t0 = Y*320 + X
-						add		t0,	t0,	a5			# VGAStart + t0 é o endereço		
-						
-						mv		t6,	a3				# t6 = j = largura do objeto
-						beq		a6,	zero, drawObject.drawLine	# Se for para inverter o sprite, executamos as próximas instruções
-						add		a4,	a4,	a3			# Pegamos o endereço do final da linha
-						addi		a4,	a4,	-1
-						j		drawObject.drawLineF			# Pulamos para o loop de desenho invertido de linha					
-	drawObject.drawLine:			beq		t6,	zero,	drawObject.drawLine.end # while (j > 0 )
-							
-							li		t5,	160
-							bgtu		a1,	t5,	drawObject.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
-							
-							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
-							li		t2,	RVCL			# Transparência
-							beq		t1,	t2,	drawObject.noDraw # Se a cor for igual a do rio, então não pintamos
-							# Colisão
-							bne		s0,	zero,	drawObject.skipCol# Se já tivermos feito colisão, não fazemos de novo							
-							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela														
-							li		t2,	SHOT			# Cor do tiro
-							bne		t3,	t2,	drawObject.skipCol # Se não for igual a cor do tiro, não houve colisão
-							li		s0,	1			# Houve colisão
-							sb		s0,	0(a7)			# Salvamos no endereço de colisão e não fazemos mais teste																																	
-	drawObject.skipCol:				sb		t1,	0(t0)			# Desenhamos na tela
-	drawObject.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte
-	
-							addi		t0,	t0,	1		# Próximo endereço de pintura
-							addi		t6,	t6,	-1		# j--
-							j		drawObject.drawLine
-							
-	
-	drawObject.drawLineF:			beq		t6,	zero,	drawObject.drawLineF.end # while (j > 0 )
-							
-							li		t5,	160
-							bgtu		a1,	t5,	drawObject.noDrawF # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
-							
-							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
-							li		t2,	RVCL			# Transparência
-							beq		t1,	t2,	drawObject.noDrawF # Se a cor for igual a do rio, então não pintamos
-							# Colisão
-							bne		s0,	zero,	drawObject.skipColF# Se já tivermos feito colisão, não fazemos de novo							
-							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela														
-							li		t2,	SHOT			# Cor do tiro
-							bne		t3,	t2,	drawObject.skipColF # Se não for igual a cor do tiro, não houve colisão
-							li		s0,	1			# Houve colisão
-							sb		s0,	0(a7)			# Salvamos no endereço de colisão e não fazemos mais teste																											
-	drawObject.skipColF:				sb		t1,	0(t0)			# Desenhamos na tela
-	drawObject.noDrawF:				addi		a4,	a4,	-1		# Passamos para o próximo byte
-	
-							addi		t0,	t0,	1		# Próximo endereço de pintura
-							addi		t6,	t6,	-1		# j--
-							j		drawObject.drawLineF						
-																			
-	
-	drawObject.drawLineF.end:		add		a4,	a4,	a3			# Ajustando o endereço do bitmap, após desenho de linha invertido
-						addi		a4,	a4,	1
-	drawObject.drawLine.end:		addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
-						addi		a2,	a2,	-1			# height--
-						j		drawObject.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
-						
-	drawObject.finish:		lw		s0,	0(sp)
-					addi		sp,	sp,	4
-					ret
-	
-#############################
-# Desenha o jogador na tela				
-# a0: Coordenada X
-# a1: Coordenada Y
-# a2: Altura do jogador
-# a3: Largura do jogador
-# a4: Endereço do bitmap do jogador
-# a5: Endereço do VGA
-# a6: Desenhar invertido (1 ou 0)
-# a7: Endereço da variável de colisão
-############################
-# Uma cópia da rotina drawObject, com modificações
-# Por exemplo, não há checagem de visibilidade, porque, a princípio, o jogador está sempre visível
-# Draw player and Check collision
-# Usa .eqv definidos fora da função
-drawPlayerChkC:				addi		sp,	sp,	-4
-					sw		s0,	0(sp)			
-
-	drawPlayerChkC.start:		beq		a2,	zero,	drawPlayerChkC.finish				# while (height > 0 )
-						
-						# Calculando o endereço no VGA
-						li		t0,	320
-						mul		t0,	a1,	t0				# Y*320
-						add		t0,	t0,	a0				# t0 = Y*320 + X
-						add		t0,	t0,	a5				# VGAStart + t0 é o endereço		
-						
-						mv		t6,	a3					# t6 = j = largura do objeto
-						beq		a6,	zero, drawPlayerChkC.drawLine		# Se for para inverter o sprite, executamos as próximas instruções
-						add		a4,	a4,	a3				# Pegamos o endereço do final da linha
-						addi		a4,	a4,	-1
-						j		drawPlayerChkC.drawLineF			# Pulamos para o loop de desenho invertido de linha					
-	drawPlayerChkC.drawLine:		beq		t6,	zero,	drawPlayerChkC.drawLine.end 	# while (j > 0 )
-							
-							# CHECAGEM DE COLISÃO	
-							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
-							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
-							beq		t1,	t5,	drawPlayerChkC.noDraw 	# Assim, ignoramos o teste de colisão
-							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
-							beq		t4,	t5,	drawPlayerChkC.noColl 	# Se é rio, não fazemos nada
-							li		t5,	EXPL
-							beq		t4,	t5,	drawPlayerChkC.noColl 	# Se for explosão, também não fazemos nada
-							li		t5,	FUEL
-							bne		t4,	t5,	drawPlayerChkC.chkLeuf 	# Checamos se é combústivel
-							li		s0,	2				# Guardamos o tipo de colisão em s0
-							j		drawPlayerChkC.noColl			# Procedendo ao desenho
-	drawPlayerChkC.chkLeuf:				li		t5,	LEUF
-							bne		t4,	t5,	drawPlayerChkC.boom	# Checamos se é combústivel ruim
-							li		s0,	3				# Guardamos em s0
-							j		drawPlayerChkC.noColl			# Procedendo ao desenho
-	drawPlayerChkC.boom:				li		s0,	1				# Se não for nenhuma dos casos anteriores, então é colisão fatal
-							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo						
-															
-	drawPlayerChkC.noColl:				sb		t1,	0(t0)				# Desenhamos na tela
-	drawPlayerChkC.noDraw:				addi		a4,	a4,	1			# Passamos para o próximo byte
-	
-							addi		t0,	t0,	1			# Próximo endereço de pintura
-							addi		t6,	t6,	-1			# j--
-							j		drawPlayerChkC.drawLine
-							
-	
-	drawPlayerChkC.drawLineF:		beq		t6,	zero,	drawPlayerChkC.drawLineF.end # while (j > 0 )
-							
-							# CHECAGEM DE COLISÃO	
-							lbu		t1,	0(a4)				# Pegamos o primeiro byte do bitmap do objeto
-							li		t5,	RVCL				# Cor do rio (nessa rotina, ignoramos os bytes com essa cor para o propósito de colisão
-							beq		t1,	t5,	drawPlayerChkC.noDrawF 	# Assim, ignoramos o teste de colisão
-							lbu		t4,	0(t0)				# Recebe a cor do background naquele ponto
-							beq		t4,	t5,	drawPlayerChkC.noCollF 	# Se é rio, não fazemos nada
-							li		t5,	EXPL
-							beq		t4,	t5,	drawPlayerChkC.noCollF 	# Se for explosão, também não fazemos nada
-							li		t5,	FUEL
-							bne		t4,	t5,	drawPlayerChkC.chkLeufF # Checamos se é combústivel
-							li		s0,	2				# Guardamos o tipo de colisão em s0
-							j		drawPlayerChkC.noCollF			# Procedendo ao desenho
-	drawPlayerChkC.chkLeufF:			li		t5,	LEUF
-							bne		t4,	t5,	drawPlayerChkC.boomF	# Checamos se é combústivel ruim
-							li		s0,	3				# Guardamos em s0
-							j		drawPlayerChkC.noCollF			# Procedendo ao desenho
-	drawPlayerChkC.boomF:				li		s0,	1				# Se não for nenhuma dos casos anteriores, então é colisão fatal
-							j		drawPlayerChkC.finish			# Cancelamos o desenho aqui mesmo
-							
-	drawPlayerChkC.noCollF:				sb		t1,	0(t0)			# Desenhamos na tela
-	drawPlayerChkC.noDrawF:				addi		a4,	a4,	-1		# Passamos para o próximo byte
-	
-							addi		t0,	t0,	1		# Próximo endereço de pintura
-							addi		t6,	t6,	-1		# j--
-							j		drawPlayerChkC.drawLineF						
-																			
-	
-	drawPlayerChkC.drawLineF.end:		add		a4,	a4,	a3			# Ajustando o endereço do bitmap, após desenho de linha invertido
-						addi		a4,	a4,	1
-	drawPlayerChkC.drawLine.end:		addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
-						addi		a2,	a2,	-1			# height--
-						j		drawPlayerChkC.start			# Se estiver como esperado, a4 já deve estar com o endereço certo
-						
-	drawPlayerChkC.finish:		sb		s0,	0(a7)					# Salvamos o tipo de colisão no endereço
-					lw		s0,	0(sp)
-					addi		sp,	sp,	4
-					ret
-
-###########################################
-# Tratamento de colisão do jogador			
-# a0: Valor da colisão
-# a1: Endereço da variável de combústivel
-# Saídas:
-# a0: Booleana que diz se houve crash
-# a1: Som para tocar
-###########################################
-playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisão, saímos
-					li		t0,	1
-					bne		a0,	t0,	playerColHandler.test2		# Colisão fatal
-					li		a0,	1					# Booleana de crash
-					li		a1,	2					# Som 2
-					j		playerColHandler.end
-					
-	playerColHandler.test2:		li		t0,	2
-					bne		a0,	t0,	playerColHandler.test3		# Colisão com combústivel
-					
-					la		t0,	fuelChargeRate				# Endereço de constante de recarga
-					lbu		t1,	0(t0)
-					lbu		t2,	0(a1)					# Nível de combústivel atual
-					add		t2,	t2,	t1				# Enchemos o tanque um pouco
-					sb		t2,	0(a1)					# Salvando
-					li		a0,	0					# Não é crash
-					li		a1,	3					# Som 3	
-					j		playerColHandler.end
-					
-	playerColHandler.test3:		li		t0,	3
-					bne		a0,	t0,	playerColHandler.noCol		# Colisão com bad fuel
-					la		t0,	fuelChargeRate				# Endereço de constante de recarga
-					lbu		t1,	0(t0)
-					lb		t2,	0(a1)					# Nível de combústivel atual
-					sub		t2,	t2,	t1				# Drenamos o tanque um pouco
-					sb		t2,	0(a1)					# Salvando
-					li		a0,	0					# Não é crash
-					li		a1,	4					# Som 4
-					j		playerColHandler.end
-	
-	playerColHandler.noCol:		li		a0,	0
-					li		a1,	0					# Não tocamos nenhum som	
-	playerColHandler.end:		ret
-
-#############################################
-# Recebimento de input (RARS)
-# a0: Endereço do controle do KB
-# a1: Endereço do dado do KB
-# a2: Valor da velocidade X
-# a3: Endereço da PosX
-# a4: Endereço da direção
-# a5: Endereço do sprite padrão dp jogador
-# a6: Endereço do sprite de virada do jogador
-# a7: Endereço do espaço no qual é salvo o endereço do sprite atual
-# Arg8: Endereço da velocidade de scroll da tela
-# Arg9: Endereço da variável de criação de tiro
-#############################################
-getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
-					andi		t0,	t0,	1				# Aplicando bitmask
-					beq		t0,	zero,	getInputRars.noMove		# Se t0 == 0, não há input novo
-					lw		t0,	0(a1)					# Há input novo, então o guardamos
-					
-					# Switch case
-					li		t1,	M_LEFT
-					bne		t0,	t1,	getInputRars.testRight		# Testamos se é a direção esquerda
-					lhu		t2,	0(a3)					# Pegamos a posição X
-					li		t1,	-1
-					mul		t1,	t1,	a2				# Esquerda significa reduzir a coordenada X, então invertemos a velocidade
-					add		t2,	t2,	t1				# Atualizamos a posição X
-					sh		t2,	0(a3)					# Guardamos no endereço certo
-					li		t1,	1					# 1 = esquerda
-					sb		t1,	0(a4)					# Atualizamos a direção
-					sw		a6,	0(a7)					# Atualizamos o sprite
-					j		getInputRars.end				
-					
-	getInputRars.testRight:		li		t1,	M_RIGHT
-					bne		t0,	t1,	getInputRars.testUp		# Testamos se é a direção direita
-					lhu		t2,	0(a3)					# Pegamos a posição X
-					add		t2,	t2,	a2				# Atualizamos a posição
-					sh		t2,	0(a3)					# Guardamos no endereço certo
-					li		t1,	0					# 0 = direita
-					sb		t1,	0(a4)					# Atualizamos a direção
-					sw		a6,	0(a7)					# Atualizamos o sprite
-					j		getInputRars.end
-					
-	getInputRars.testUp:		li		t1,	M_UP
-					bne		t0,	t1,	getInputRars.testDown		# Testamos se é cima
-					la		t1,	scrollSpeedFast				# Pegamos o valor da velocidade no nível devagar
-					lbu		t2,	0(t1)
-					la		t1,	Arg8
-					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
-					sb		t2,	0(t3)					# Atualizamos a velocidade
-					sw		a5,	0(a7)
-					j		getInputRars.end
-					
-	getInputRars.testDown:		li		t1,	M_DOWN
-					bne		t0,	t1,	getInputRars.testFire		# Testamos se é baixo
-					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
-					lbu		t2,	0(t1)
-					la		t1,	Arg8					# Pegamos o endereço onde está a velocidade de scroll da tela
-					lw		t3,	0(t1)					#
-					sb		t2,	0(t3)					# Atualizamos a velocidade
-					sw		a5,	0(a7)
-					j		getInputRars.end
-					
-	getInputRars.testFire:		li		t1,	M_FIRE
-					bne		t0,	t1,	getInputRars.noMove		# Testamos se é tiro
-					la		t1,	Arg9					
-					lw		t2,	0(t1)					# Endereço da variável de criação de tiro
-					li		t3,	1
-					sb		t3,	0(t2)					# Colocamos 1 para pedir criação de tiro
-					j		getInputRars.end
-					
-	getInputRars.noMove:		sw		a5,	0(a7)					# Como não houve movimento, o sprite padrão é usado
-					la		t1,	Arg8					# Pegamos o endereço..
-					lw		t2,	0(t1)					# ..do scroll vertical
-					la		t3,	scrollSpeedNormal			# Pegamos o valor da velocidade padrão
-					lbu		t4, 	0(t3)					# 
-					sb		t4,	0(t2)					# Atualizamos (Isso é feito se não houver nenhum input novo)
-
-	getInputRars.end:		ret
-	
-#############################################
-# Recebimento de input (De1)
-# a0: Endereço do eixo X
-# a1: Endereço do eixo Y
-# a2: Valor da velocidade X
-# a3: Endereço da PosX
-# a4: Endereço da direção
-# a5: Endereço do sprite padrão dp jogador
-# a6: Endereço do sprite de virada do jogador
-# a7: Endereço do espaço no qual é salvo o endereço do sprite atual
-# Arg8: Endereço da velocidade de scroll da tela
-# Arg9: Endereço do sinal do botão do stick
-# Arg10: Endereço da variável de criação de tiro
-#############################################
-getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mudado se houver movimento
-					la		t1,	Arg8					# Pegamos o endereço..
-					lw		t2,	0(t1)					# ..do scroll vertical
-					la		t3,	scrollSpeedNormal			# Pegamos o valor da velocidade padrão
-					lbu		t4, 	0(t3)					# 
-					sb		t4,	0(t2)					# Caso nada mude, sempre voltamos à velocidade padrão
-
-					lw		t0,	0(a0)					# Pegamos o valor do eixo X
-					lw		t1, 0(a1)					# Pegamos o valor do eixo Y
-					
-					
-					li		t1,	400					# Valor do deadzone em direção a zero
-					bge		t0,	t1,	getInputStick.testXp		# Se for maior, o jogador não está indo nessa direção
-					# Vamos presumir que é a direita
-					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
-					add		t2,	t2,	a2				# Atualizamos a posição
-					sh		t2,	0(a3)					# Guardamos no endereço certo
-					li		t1,	0					# 0 = direita
-					sb		t1,	0(a4)					# Atualizamos a direção
-					sw		a6,	0(a7)					# Atualizamos o sprite
-					j		getInputStick.testYm
-					
-	getInputStick.testXp:		li		t1,	3695					# Valor do deadzone em direção a 1023	
-					ble		t0,	t1,	getInputStick.testYm		# Se for menor, o jogador não está indo nessa direção
-					# Vamos presumir esquerda
-					lhu		t2,	0(a3)					# Pegamos a posição X do jogador
-					li		t1,	-1
-					mul		t1,	t1,	a2				# Esquerda significa reduzir a coordenada X, então invertemos a velocidade
-					add		t2,	t2,	t1				# Atualizamos a posição X
-					sh		t2,	0(a3)					# Guardamos no endereço certo
-					li		t1,	1					# 1 = esquerda
-					sb		t1,	0(a4)					# Atualizamos a direção
-					sw		a6,	0(a7)					# Atualizamos o sprite
-					
-	getInputStick.testYm:		lw		t0,	0(a1)					# Pegamos o valor do eixo Y
-					li		t1,	400					# Valor do deadzone em direção a zero
-					bge		t0,	t1,	getInputStick.testYp		# Se for maior, não está indo nessa direção
-					# Vamos presumir que é baixo
-					la		t1,	scrollSpeedSlow				# Pegamos o valor da velocidade no nível rápido
-					lbu		t2,	0(t1)
-					la		t1,	Arg8					# Pegamos o endereço onde está a velocidade de scroll da tela
-					lw		t3,	0(t1)					#
-					sb		t2,	0(t3)					# Atualizamos a velocidade
-					sw		a5,	0(a7)					# Usa o sprite padrão
-					j		getInputStick.testButton
-	
-	getInputStick.testYp:		li		t1,	3695					# Deadzone em direção a 1023
-					ble		t0,	t1,	getInputStick.testButton	# Se for menor, não está indo nessa direção
-					la		t1,	scrollSpeedFast				# Pegamos o valor da velocidade no nível devagar
-					lbu		t2,	0(t1)
-					la		t1,	Arg8
-					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
-					sb		t2,	0(t3)					# Atualizamos a velocidade
-					sw		a5,	0(a7)					# Usa o sprite padrão
-	
-	getInputStick.testButton:	la		t0,	Arg9					# Pegamos o endereço do botão
-					lw		t1,	0(t0)
-					lw		t2,	0(t1)					# Pegamos o valor no endereço
-					bne		t2,	zero,	getInputStick.end		# O botão é ativo em zero
-					la		t1,	Arg10					
-					lw		t2,	0(t1)					# Endereço da variável de criação de tiro
-					li		t3,	1
-					sb		t3,	0(t2)					# Colocamos 1 para pedir criação de tiro
-
-	getInputStick.end:		ret
-			
-#############################
-# Gera um novo objeto				
-# a0: Endereço onde será salvo o objeto
-# a1: Endereço onde será salva a direção do objeto
-# a2: Endereço do Table com os endereços das "formas" dos objetos
-# a3: Tamanho de um objeto (usado para cálculo de offset)
-# a4: Probabilidade de gerar combústivel
-# a5: Índice do tipos de inimigos possíveis
-############################			
-# Vamos fazer assim:
-# 1) Rotina para decisão de qual objeto será criado				
-# Nessa rotina, decidimos se:
-# a) Vamos criar Fuel ou não, baseado na dificuldade.
-# b) Se não for Fuel, decidimos se é casa ou não, baseado na dificuldade
-# c) Decidir qual inimigo colocar
-# d) Decidir coordenada x ( + um offset ) onde colocar o objeto (não)
-# e) Decidir direção
-
-generateObject:				addi		sp,	sp,	-28
-					sw		ra,	0(sp)
-					sw		s0,	4(sp)
-					sw		s1,	8(sp)
-					sw		s2,	12(sp)
-					sw		s3,	16(sp)
-					sw		s4,	20(sp)
-					sw		s5,	24(sp)
-				
-					mv		s0,	a0					# Salvamos os argumentos, porque a rotina chamará outra
-					mv		s1,	a1
-					mv		s2,	a2
-					mv		s3,	a3
-					mv		s4,	a4
-					mv		s5,	a5
-					
-					li		a7,	41					# Gerando o número aleatório para decidir se será combústivel
-					ecall
-					remu		a0,	a0,	s4				# Se o resultado for igual a 0, geramos combústivel
-					beq		a0,	zero,	generateObject.fuel
-					
-					ecall								# Não é combústivel, então geramos um novo número aleatório
-					remu		t0,	a0,	s5				# Usamos mod para colocar o número dentro do intervalo possível de inimigos
-					addi		t0,	t0,	1				# Para excluir o combústivel
-					mul		t0,	t0,	s3				# Cálculo do offset
-					add		t0,	t0,	s2				# Aplicando offset
-					mv		a0,	s0					# Destino
-					mv		a1,	t0					# Origem
-					mv		a2,	s3					# Tamanho em bytes
-					call		memcpy
-					
-					li		a7,	41					# Mais um número aleatório para decidir a direção do objeto
-					ecall
-					li		t0,	2
-					remu		t1,	a0,	t0				# Pertence a {0,1}
-					sb		t1,	0(s1)					# Salvando no endereço certo				
-					j		generateObject.end		
-					
-	generateObject.fuel:		mv		a0,	s0					# Copiamos os dados padrões do objeto para o endereço final
-					mv		a1,	s2
-					mv		a2,	s3
-					call		memcpy					
-					
-	generateObject.end:		lw		ra,	0(sp)
-					lw		s0,	4(sp)
-					lw		s1,	8(sp)
-					lw		s2,	12(sp)
-					lw		s3,	16(sp)
-					lw		s4,	20(sp)
-					lw		s5,	24(sp)
-					addi		sp,	sp,	28
-					ret
-
-#############################
-# Decide a coordenada X do objeto baseado no ID do bloco
-# Entradas:			
-# a0: ID do bloco
-# a1: Largura do objeto
-# a2: Offset Y ( quantidade de linhas do bloco que já foram desenhadas)
-# Saídas:
-# a0: Coordenada X escolhida
-# a1: Coordenada Y escolhida
-############################
-
-placeObject:				srli		t0,	a0,	4				# Isolando valor da borda
-					li		t1,	0x0000000f				# Bitmask para isolar o valor do rio
-					and		t2,	a0,	t1				# Isolando valor do rio
-					
-					li		a7,	41
-					ecall								# Gerando o número aleatório
-					remu		t3,	a0,	t2				# Operação mod para que seja um número entre os blocos de rio
-					add		t3,	t3,	t0				# Temos o bloco "x" escolhido
-					ecall								# Outro número aleatório para decidir qual lado da tela
-					li		t2,	2
-					remu		t2,	a0,	t2				# b = 0 ou 1
-					
-					# Fórmula da coordenada final
-					# X = [13*b + (-2*b + 1)*x]*20 + 20
-					# t3 = x, t2 = b
-					li		t0,	-2					# -2
-					mul		t0,	t0,	t2				# -2*b
-					addi		t0,	t0,	1				# -2*b + 1
-					mul		t0,	t0,	t3				# (-2*b + 1)*x
-					li		t1,	13
-					mul		t1,	t1,	t2				# 13*b
-					add		t0,	t0,	t1				# [13*b + (-2*b + 1)*x]
-					li		t4,	20
-					mul		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20
-					add		t0,	t0,	t4				# [13*b + (-2*b + 1)*x]*20 + 20
-					mv		a0,	t0					# Colocamos em a0 para retornar
-					li		a1,	-6					# Y inicial padrão para um objeto novo ("fora da tela")
-					add		a1,	a1,	a2				# Ajuste necessário, sem ele o objetos novos seram colocados em posições erradas
-					ret
-
-#############################
-# Atualiza a coordenada X do objeto
-# Entradas:			
-# a0: Coordenada X
-# a1: Coordenada Y
-# a2: Velocidade X
-# a3: Direção do objeto
-# a4: Largura do objeto
-# a5: Endereço do VGA
-# a6: Tipo do objeto
-# Saídas:
-# a0: Nova coordenada X
-# a1: Nova direção
-############################
-# Primeiro calculamos se o movimento é válido, depois movemos
-moveObjectX:				blt		a1,	zero,	moveObjectX.noUpdate		# Se Y < 0, não movimentamos o objeto
-					li		t0,	320					# Calculando o endereço no VGA
-					mul		t0,	a1,	t0				# Y*320
-					add		t0,	t0,	a0				# t0 = Y*320 + X
-					add		t0,	t0,	a5				# VGAStart + t0 é o endereço
-					li		t1,	3					# Tipo de objeto do avião
-					beq		a6,	t1,	moveObjectX.noBankColl		# Tipo especial de movimento, não colide com a terra
-					
-					# Detecção de terra
-					# O pixel usado para detectar colisão depende da direção
-					bne		a3,	zero,	moveObjectX.faceLeft		# Se for direita, continuamos aqui
-					add		t1,	t0,	a4				# Pegamos o pixel mais à direita
-					add		t1,	t1,	a2				# Somamos à velocidade
-					lbu		t3,	0(t1)					# Pegamos a cor
-					li		t2,	BANK_COLOR				# Cor da terra
-					beq		t3,	t2,	moveObjectX.changeDirection	# Se for terra mudamos de direção
-					add		a0,	a0,	a2				# Não é terra, então é uma posição válida
-					li		a1,	0					# Direção é a mesma
-					j		moveObjectX.end
-					
-	moveObjectX.faceLeft:		sub		t1,	t0,	a2				# Movimento para a esquerda, então a velocidade é negativa, e usa-se o pixel mais à esquerda
-					li		t2,	BANK_COLOR
-					lbu		t3,	0(t1)					# Pegamos a cor
-					beq		t3,	t2,	moveObjectX.changeDirection	# Teste igual ao caso da direita
-					sub		a0,	a0,	a2				# Movimento válido para a esquerda
-					li		a1,	1
-					j		moveObjectX.end
-					
-	moveObjectX.noBankColl:		li		t1,	-2					# Para o cálculo da velocidade
-					mul		t1,	t1,	a3				# Se for direita, a3 = 0 e velX > 0. Se a3 = 1, velX < 0
-					addi		t1,	t1,	1				# Fórmula : (-2*a3 + 1)*velX
-					mul		t1,	t1,	a2				# 					
-					add		a0,	a0,	t1				# Atualizando posição X
-					bge		a0,	zero,	moveObjectX.nBCnoAdjust		# Ajuste, para caso X fique negativo
-					li		a0,	300					# Fazemos um wraparound, colocando X na outra ponta da tela				
-	moveObjectX.nBCnoAdjust:	j		moveObjectX.noUpdate				# Mantém a direção
-	
-	moveObjectX.changeDirection:	xori		a3,	a3,	1				# Invertemos a direção e não atualizamos a posição X
-	moveObjectX.noUpdate:		mv		a1,	a3					# Retornamos a mesma direção		
-	
-	moveObjectX.end:		ret
-
-#############################
-# Troca o frame de animação de um objeto
-# Entradas:			
-# a0: Ponteiro para o endereço do frame 0 (Deve ser o primeiro word do objeto)
-# a1: Ponteiro para o endereço do frame 1
-# a2: Contador de frames para troca
-# a3: Número para a troca
-# a4: Endereço de rotina especial
-# Saídas:
-# a2: Contador de frames atualizado
-# Também altera o conteúdo dos endereços a0 e a1
-############################
-
-animateObject:				addi		sp,	sp,	-8
-					sw		ra,	0(sp)
-					sw		s0,	4(sp)
-					
-					beq		a3,	zero,	animateObject.end			# Se não for um objeto animado, não é feita a rotina
-					mv		s0,	a2
-					addi		s0,	s0,	1
-					bne		s0,	a3,	animateObject.end			# Se a2 != a3, ainda não é hora de atualizar o frame
-					bne		a4,	zero,	animateObject.special			# Se houver uma rotina especial, iremos chamá-la					
-					lw		t0,	0(a0)						# Salvamos o endereço do frame anterior em t0 temporariamente
-					lw		t1,	0(a1)						# Pegamos o endereço do frame novo para sobreescrever
-					sw		t1,	0(a0)						# Trocado
-					sw		t0,	0(a1)						# Trocado também
-					li		s0,	0						# Resetamos o contador
-					j		animateObject.end						
-	
-	animateObject.special:		# Lembrando que a0 e a1 estão inalterados e vão ser usados na rotina a seguir
-					jalr		ra,	a4,	0						# Vamos até lá
-	animateObject.end:		mv		a2,	s0							# Contador atualizado
-					
-					
-					lw		ra,	0(sp)
-					lw		s0,	4(sp)
-					addi		sp,	sp,	8
-					ret
-
-
-#############################
-# Tratamento de colisão de objeto			
-# a0: Endereço do objeto a ser substituído
-# a1: Endereço de objeto para substituição
-# a2: Tamanho do objeto em bytes
-# a3: Endereço da booleana de colisão
-# a4: Endereço da posição X
-# a5: Endereço da posição Y
-# a6: Endereço do tipo de objeto
-############################
-objectColHandler:			addi		sp,	sp,	-24
-					sw		ra,	0(sp)
-					sw		s0,	4(sp)
-					sw		s1,	8(sp)
-					sw		s2,	12(sp)
-					sw		s3,	16(sp)
-					sw		s4,	20(sp)
-					
-					mv		s0,	a4						# Salvando o endereço das posições para colocarmos o valor certo depois...
-					mv		s1,	a5						# ..da substituição
-					lbu		s4,	0(a6)						# Pegando tipo do objeto para checagem a seguir	
-					lh		s2,	0(s0)						# Valor de X
-					lh		s3,	0(s1)						# Valor de Y
-					lbu		t0,	0(a3)						# Testamos se houve colisão no frame
-					beq		t0,	zero,	objectColHandler.end			# Se não houve, nada fazemos
-					call		memcpy
-					li		t0,	99						# Tipo da ponte
-					bne		s4,	t0,	objectColHandler.noAdjust		# Se for ponte, ajustamos o X para que a explosão apareça centrada
-					addi		s2,	s2,	30					# Offsetzinho										
-	objectColHandler.noAdjust:	sh		s2,	0(s0)						# Colocando o valor de X correto							
-					sh		s3,	0(s1)						# Colocando o valor de Y correto	
-																																	# Todas os argumentos estão em posição				
-	objectColHandler.end:		lw		ra,	0(sp)
-					lw		s0,	4(sp)
-					lw		s1,	8(sp)
-					lw		s2,	12(sp)
-					lw		s3,	16(sp)
-					lw		s4,	20(sp)
-					addi		sp,	sp,	24
-					ret
-
-#############################
-# Cria um tiro				
-# a0: Endereço do vetor de tiros
-# a1: Endereço com o "formato" do tiro
-# a2: Tamanho do objeto "tiro" em bytes
-# a3: Índice de escrita
-# a4: Coordenada X inicial
-# a5: Offset X para ajuste
-############################		
-createShot:				addi		sp,	sp,	-16
-					sw		ra,	0(sp)
-					sw		s0,	4(sp)
-					sw		s1,	8(sp)
-					sw		s2,	12(sp)
-					
-					mv		s0,	a4						# Salvando, porque será chamada uma sub rotina
-					mv		s2,	a5
-					mul		t0,	a2,	a3					# Cálculo do offset
-					add		a0,	a0,	t0					# Aplicando
-					mv		s1,	a0
-					call		memcpy							# Os argumentos já estão prontos
-					add		s0,	s0,	s2					# Fazemos ajuste da coordenada X
-					sh		s0,	4(s1)						# Colocamos o valor da coordenada X			
-					
-					lw		s2,	12(sp)
-					lw		s1,	8(sp)
-					lw		s0,	4(sp)
-					lw		ra,	0(sp)
-					addi		sp,	sp,	16
-					ret
-
-#############################
-# Atualiza posição do tiro			
-# a0: Endereço do tiro
-############################
-# Faz todas as alterações na memória principal
-moveShot:				lh		t0,	6(a0)						# Coordenada Y do tiro
-					lb		t1,	8(a0)						# Velocidade Y
-					add		t0,	t0,	t1					# Atualizando posição
-					sh		t0,	6(a0)						# Salvando
-					ret
-
-#############################
-# Desenha um tiro na tela e detecta colisão				
-# a0: Coordenada X
-# a1: Coordenada Y
-# a2: Altura do tiro
-# a3: Largura do tiro
-# a4: Endereço do bitmap do objeto
-# a5: Endereço do VGA
-# a6: Endereço da booleana de colisão
-############################
-drawShot:				addi		sp,	sp,	-4
-					sw		s0,	0(sp)
-					li		s0,	0				# Váriavel que indica se já houve colisão, para não testarmos de novo se houver
-
-					blt		a1,	zero,	drawShot.collided	# Se Y < 0, o tiro não é mais visível, então consideramos uma colisão
-					li		t0,	160				# Número máximo de linhas visíveis
-					sub		t1,	a1,	a2			# t1 = coordenada do topo do tiro
-					bgt		t1,	t0,	drawShot.collided	# Se o topo estiver acima de 160, tiro não é visível
-
-	drawShot.start:			beq		a2,	zero,	drawShot.finish		# while (height > 0 )
-						
-						# Calculando o endereço no VGA
-						li		t0,	320
-						mul		t0,	a1,	t0			# Y*320
-						add		t0,	t0,	a0			# t0 = Y*320 + X
-						add		t0,	t0,	a5			# VGAStart + t0 é o endereço		
-						
-						mv		t6,	a3				# t6 = j = largura do objeto					
-	drawShot.drawLine:			beq		t6,	zero,	drawShot.drawLine.end 	# while (j > 0 )
-							
-							li		t5,	160
-							bgtu		a1,	t5,	drawShot.noDraw # Fazemos o teste de visibilidade linha a linha para um desaparecimento suave
-							
-							lbu		t1,	0(a4)			# Pegamos o primeiro byte do bitmap do objeto
-							li		t2,	RVCL			# Transparência
-							beq		t1,	t2,	drawShot.noDraw # Se a cor for igual a do rio, então não pintamos
-							# Colisão
-							bne		s0,	zero,	drawShot.skipCol# Se já tivermos feito colisão, não fazemos de novo		
-							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela		
-							beq		t3,	t2,	drawShot.skipCol# Se for igual ao rio, então não há colisão
-							li		s0,	1			# Houve colisão
-							sb		s0,	0(a6)			# Salvamos no endereço de colisão e não fazemos mais teste														
-	drawShot.skipCol:				sb		t1,	0(t0)			# Desenhamos na tela
-	drawShot.noDraw:				addi		a4,	a4,	1		# Passamos para o próximo byte	
-							addi		t0,	t0,	1		# Próximo endereço de pintura
-							addi		t6,	t6,	-1		# j--
-							j		drawShot.drawLine
-							
-	drawShot.drawLine.end:			addi		a1,	a1,	-1			# (Y--): Passamos para a próxima linha do objeto								
-						addi		a2,	a2,	-1			# height--
-						j		drawShot.start				# Se estiver como esperado, a4 já deve estar com o endereço certo
-	
-	drawShot.collided:		li		t0,	1					# Houve colisão, ativamos a booleana
-					sb		t0,	0(a6)					# Salvamos a colisão
-		
-	drawShot.finish:		lw		s0,	0(sp)
-					addi		sp,	sp,	4	
-					ret				
-
-#############################
-# Tratamento de colisão de um tiro				
-# a0: Endereço da booleana de colisão
-# a1: Endereço da booleana de existência
-# a2: Endereço do número de tiros
-############################
-shotColHandler:				lbu		t0,	0(a0)					# Pegamos a booleana de colisão
-					beq		t0,	zero,	shotColHandler.end		# Se for 0, não há colisão
-					li		t0,	0
-					sb		t0,	0(a1)					# Mudamos a booleana de existência, assim o tiro não será mais desenhado
-					lb		t1,	0(a2)					# Pegamos o número de tiros existente
-					addi		t1,	t1,	-1				# Atualizamos
-					bge		t1,	zero,	shotColHandler.store		# Se for maior que zero, está adequado
-					li		t1,	0					# Se for menor, corrigimos
-	shotColHandler.store:		sb		t1,	0(a2)
-	shotColHandler.end:		ret
-
-#############################
-# Rotina especial para troca de explosão por espaço vazio				
-# a0: Endereço do objeto
-############################
-stopExplosion:				addi		sp,	sp,	-4
-					sw		ra,	0(sp)
-					la		a1,	objectEmpty				# Endereço do objeto vazio
-					li		a2,	32					# Tamanho do objeto. Número mágico porque preguiça
-					call		memcpy
-					lw		ra,	0(sp)
-					addi		sp,	sp,	4
-					ret
-					
-#############################
-# Toca um som tirado da tabela			
-# a0: Endereço da tabela
-# a1: Número do som
-############################
-# Cada som é composto por 4 words, então o offset é 16 bytes
-playSound:				beq		a1,	zero,	playSound.end			# Se for zero, nenhum som novo é tocado
-					addi		a1,	a1,	-1				# Som 1 -> Offset zero, porque soundSelect em zero significa nenhum som
-					li		t0,	16
-					mul		t0,	t0,	a1				# Cálculo do offset
-					add		t1,	a0,	t0				# Aplicando offset
-					lw		a0,	0(t1)					# Nota
-					lw		a1,	4(t1)					# Duração
-					lw		a2,	8(t1)					# Instrumento
-					lw		a3,	12(t1)					# Volume
-					li		a7,	31					# ecall MidiOUT
-					ecall
-	playSound.end:			ret
-	
-#############################
-# Seleciona qual som tem maior prioridade no frame			
-# a0: Número do som a avaliar
-############################
-soundSelect:				beq		a0,	zero,	soundSelect.nop			# Se o novo som == 0, ignora-se a rotina
-					la		t0,	nextSound				# Endereço onde está o som
-					lbu		t1,	0(t0)					# Pega o valor
-					beq		t1,	zero,	soundSelect.newSound		# Se o som atual for 0, só troca o valor de nextSound
-					ble		a0,	t1,	soundSelect.newSound		# Se o número do som for menor, ele tem prioridade	
-					mv		a0,	t1					# Mantemos o som anterior
-	soundSelect.newSound:		sb		a0,	0(t0)					# Novo som colocado
-	soundSelect.nop:		ret
-###############################
-# - Memcpy -
-# Entradas.
-# a0 : Endereço de destino ;; a1 : Endereço de origem ;; a2 : Tamanho em bytes
-# Saídas.
-# a0 : Endereço de destino
-###############################
-memcpy:					mv 		t0,	zero
-	memcpy.L1:			beq		t0,	a2,	memcpy.L1.end
-		
-						lbu		t1,	(a1)
-						sb		t1,	(a0)
-						addi		t0, 	t0,	1
-						addi		a0,	a0,	1
-						addi		a1,	a1,	1
-						j		memcpy.L1
-							
-	memcpy.L1.end:			ret
 
 #############################
 # Rotina de derrota			
 # a0: Endereço da tabela
 ############################			
 # Usaremos variáveis globais
+# Presume que o playfied, inimigos e tudo mais já tenha sido pintado, exceto o jogador
 
-defeatHandler:				
-																																																														
-																																																																																																
-##############################################################################################
-#
-# 8888888b.   .d88888b.  888b     d888      88888888888       888      888                   
-# 888   Y88b d88P" "Y88b 8888b   d8888          888           888      888                   
-# 888    888 888     888 88888b.d88888          888           888      888                   
-# 888   d88P 888     888 888Y88888P888          888   8888b.  88888b.  888  .d88b.  .d8888b  
-# 8888888P"  888     888 888 Y888P 888          888      "88b 888 "88b 888 d8P  Y8b 88K      
-# 888 T88b   888     888 888  Y8P  888          888  .d888888 888  888 888 88888888 "Y8888b. 
-# 888  T88b  Y88b. .d88P 888   "   888          888  888  888 888 d88P 888 Y8b.          X88 
-# 888   T88b  "Y88888P"  888       888          888  "Y888888 88888P"  888  "Y8888   88888P'
-#                                                                                                                                           
-################################################################################################
+defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogador
+						lh		a0,	0(t0)
+						la		t1,	playerPosY
+						lbu		a1,	0(t1)
+						li		a2,	20				# Número mágico (altura da explosão)			
+						li		a3,	20				# Número mágico (largura da explosão)
+						la		a4,	Expl_f0				# Endereço do bitmap da explosão
+						li		a6,	0
+						la		t0,	framePtr
+						lw		a5,	0(t0)				# Endereço do VGA
+						la		a7,	playerCollision			# Endereço da booleana de colisão (não vai ser usada)
+						call		drawObject
+							
+						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
+						lbu		t1,	0(t0)
+						li		t0,	VGAFRAMESELECT
+						sb		t1,	0(t0)
+								
+						li		a0,	2000
+						li		a7,	32
+						ecall							# Esperamos 2 segundos
+							
+						la		t0,	frameToShow			# Trocamos de frame
+						la		t2,	framePtr			# Ponteiro para o frame no qual será desenhado o mapa
+						lbu		t1,	0(t0)
+						xori		t1,	t1,	1			# O uso de xor inverte o bit
+						sb		t1,	0(t0)				# Guardamos o valor de volta em frameToShow
+						li		t3,	VGAADDRESSINI0			# Inicialmente escolhemos o frame 0
+						beq		t1,	zero,	defeatHandler.selectF0	# Mas é realmente o frame 0?
+						li		t3,	VGAADDRESSINI1			# Não, então escolhe-se frame 1						
+	defeatHandler.selectF0:			sw		t3,	0(t2)				# Salvar em framePtr
+							
+							
+						la		t0,	framePtr
+						lw		t1,	0(t0)				# Endereço de pintura
+						li		t6,	19200				# Número de words para pintar
+	defeatHandler.blackout:			beq		t6,	zero,	defeatHandler.blackout.end						
+	
+							li		t2,	0			# Cor preta
+							sw		t2,	0(t1)			# Pintando
+							addi		t1,	t1,	4		# Próxima word
+							addi		t6,	t6,	-1		# i--
+							j		defeatHandler.blackout
+							
+													
+																			
+					# Agora vemos se foi game over ou não																									
+	defeatHandler.blackout.end:		la		t0,	playerLives
+						lb		t1,	0(t0)				# Número de vidas restante
+						addi		t1,	t1,	-1			# Perde-se uma
+						bge		zero,	t1,	defeatHandler.gameOver	# Se for <= 0, game over
+						sb		t1,	0(t0)				# Salva novo número de vidas
+						la		a0,	readyString
+						li		a1,	140				# Coordenada X de escrita
+						li		a2,	100				# Coordenada Y
+						li		a3,	0xff				# Cor
+						li		a7,	104
+						ecall							# Printa mensagem de alerta na tela
+						#ebreak
+						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
+						lbu		t1,	0(t0)
+						li		t0,	VGAFRAMESELECT
+						sb		t1,	0(t0)
 
-.data
-.align 2
-
-# TEST
-testObjY: .word -30
-testObj: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-
-
-# Helicopter
-Heli_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-
-Heli_f1: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 
-# Ship
-Ship_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL
-	 .byte RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL
-	 .byte SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP   
-	 .byte SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP
-	 .byte SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL
-	 .byte SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL
-	 .byte RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #10
-	 .byte RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, SHIP, SHIP, SHIP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-
-# Plane	 
-Plane_f0:.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL   
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE
-	 .byte PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE
-	 .byte PLNE, PLNE, PLNE, PLNE, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLNE, PLNE, PLNE, PLNE, PLNE, PLNE, RVCL, RVCL
-	 .byte PLNE, PLNE, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte PLNE, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 
-# Fuel
-Fuel_f0: .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL
-	 .byte RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, FUEL, RVCL, RVCL, RVCL, RVCL
-
-# Bad fuel	 
-Leuf_f0: .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL
-	 .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL
-	 
-Expl_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL         
-	 
-# Bridge (80w 12h)
-Bridg_f0:.byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG 
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 .byte BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG, BRDG
-	 
-	 
-# Player
-Plyr_0:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #5
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL #10X
-         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL 
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #13 
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #15
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #20
-         
-Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #4
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #5
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL #10
-         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #12
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #15   
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #17
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #20
-                 
-########################
-# Tabela de dificuldade
-# Byte 00: Quantidade de blocos máxima de terra, partindo da ponta
-# Byte 01: Quantidade de blocos mínima de rio
-# Byte 02: Largura mínima de abertura
-# Byte 03: Probabilidade de gerar combústivel (1/x) (Na rotina, se o número aleatório Mod x == 0, é fuel)
-# Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
-########################
-DifficultyOffset:	.byte 5
-DifficultyTable:	.byte 1, 7, 2, 5, 2 # Dificuldade 0
-	  		.byte 2, 5, 2, 4, 2 # Dificuldade 1
-	  		.byte 4, 3, 2, 6, 3 # Dificuldade 2
-	  		.byte 5, 2, 2, 7, 4 # Dificuldade 3
-	  	
-	  		.byte 6, 1, 1, 12,4 # Doomguy_ouch.png
-
-####################
-# Constantes
-####################
-fuelChargeRate:		.byte 5
-fuelLossRate:		.byte 2
-
-#########################
-# Objetos
-#########################
-objectSize: 	.byte 32 # Tamanho de um objeto em bytes
-
-.align 2
-# 00 - Fuel
-objectFuel: 	.word Fuel_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Fuel_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 0			# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 0			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 01 - Helicopter
-objectHeli:	.word Heli_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Heli_f1		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 1			# 20 objectType: .byte	
-		.byte 1			# 21 objectIsAnim: .byte
-		.byte 3			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 1			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 02 - Ship
-objectShip:	.word Ship_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Ship_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 2			# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 2			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 03 - Plane
-objectPlane: 	.word Plane_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Plane_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 3			# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 12		# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 04 - Bad fuel
-objectLeuf:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 4			# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 0			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 97 - Explosion
-objectExplo:    .word Expl_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Expl_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word stopExplosion	# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 97		# 20 objectType: .byte	
-		.byte 1			# 21 objectIsAnim: .byte
-		.byte 0			# 22 objectXspeed: .byte	
-		.byte 20		# 23 objectHeight: .byte	
-		.byte 20		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 1			# 26 objectAnimationCounter: .byte	
-		.byte 3			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 98 - Empty
-objectEmpty:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Leuf_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 0			# 16 objectXpos: .half
-		.half 0			# 18 objectYpos: .half			
-		.byte 98		# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 0			# 22 objectXspeed: .byte	
-		.byte 0			# 23 objectHeight: .byte	
-		.byte 0			# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-.align 2
-# 99 - Bridge
-objectBridge:	.word Bridg_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
-		.word Bridg_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
-		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
-		.word 0			# 12 objectAction: .word # endereço de rotina especial	
-		.half 120		# 16 objectXpos: .half
-		.half -6		# 18 objectYpos: .half			
-		.byte 99		# 20 objectType: .byte	
-		.byte 0			# 21 objectIsAnim: .byte
-		.byte 0			# 22 objectXspeed: .byte	
-		.byte 12		# 23 objectHeight: .byte	
-		.byte 80		# 24 objectWidth: .byte	
-		.byte 0			# 25 objectDirection: .byte	
-		.byte 0			# 26 objectAnimationCounter: .byte	
-		.byte 0			# 27 objectAnimationTime: .byte	
-		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
-		.space 3
-
-objectBridgeOffset: .byte 7
-
-# Tiro
-shotSize: 	.byte 20		# Tamanho de um tiro em bytes
-shotMax:	.byte 20		# Número máximo de tiros
-shotDelay:	.byte 1			# Número de frames que é preciso esperar para atirar de novo
-shotXoffset:	.byte 9			# Aplicado para que o tiro saia do centro do player
-.align 2
-shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
-		.half 0			# 04 Coordenada X
-		.half 145		# 06 Coordenada Y
-		.byte -12		# 08 Velocidade Y (Negativa, porque vai para o topo)
-		.byte 9			# 09 Altura da imagem
-		.byte 2			# 10 Largura da imagem
-		.byte 1			# 11 Booleana de existência
-		.byte 0			# 12 Booleana de colisão		
-
-Shot_f0:	.byte SHOT, SHOT 
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT 
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT
-		.byte SHOT, SHOT	
-
-#########################
-# Sons
-# By Matheus Guaraci
-#########################
-# Tiro
-.align 2
-Sound1:		.word 16		# 00 Nota
-		.word 500		# 01 Duração em ms
-		.word 123		# 02 Instrumento
-		.word 127		# 03 Volume
-		
-		
-# Objeto atingido
-SoundHit:	.word 39		# 00 Nota
-		.word 800		# 01 Duração em ms
-		.word 127		# 02 Instrumento
-		.word 127		# 03 Volume
-		
-# Recarga
-SoundRefuel:	.word 75		# 00 Nota
-		.word 150		# 01 Duração em ms
-		.word 105		# 02 Instrumento
-		.word 67		# 03 Volume
-		
-# Drenagem
-SoundDrain:	.word 30		# 00 Nota
-		.word 200		# 01 Duração em ms
-		.word 105		# 02 Instrumento
-		.word 67		# 03 Volume
-
-
+						li		a0,	2000
+						li		a7,	32
+						ecall							# Esperamos mais 2 segundos antes de voltar ao jogo
+						
+						j		InitSetup
+						
+						
+	defeatHandler.gameOver: li a7, 10
+				ecall # placeholder						
+	
+							
 #######################
 # Includes
 #######################
 
+.include "memory.s"
+.include "playfield.s"
+.include "player.s"
+.include "shot.s"
+.include "objects.s"
+.include "general.s"
+.include "rom.s"
 .include "SYSTEMv17.s"

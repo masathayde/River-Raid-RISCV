@@ -17,7 +17,7 @@ x Fazer desenho inicial padrão do mapa
 x Consertar placeObject
 
 x Adicionar variáveis de vidas, combústivel e score
-- Adicionar variável de perda de combústivel por ciclo
+x Adicionar variável de perda de combústivel por ciclo
 x Adicionar variável de número máximo de tiros
 x Falta criação de tiro
 x Adicionar vetor de tiros
@@ -33,10 +33,10 @@ x Quantos tipos de colisão? (4)
 x Fazer movimentação do jogador
 x Rotina de tratamento de input
 
-- Fazer rotina de tratamento de colisão do player
-- Em caso de destruição, chamar rotina de animação especial
-  - Produzir objeto som
-    - Objeto som tem: sequência de notas, tempo de cada nota, tempo total, prioridade 
+x Fazer rotina de tratamento de colisão do player
+x Em caso de destruição, chamar rotina de animação especial
+  x Produzir objeto som
+    = Objeto som tem: sequência de notas, tempo de cada nota, tempo total, prioridade 
 
 x Fazer animação dos objetos (só o helicóptero tem até agora)
 x Fazer movimentação
@@ -51,12 +51,16 @@ x Fazer rotina de reprodução de som
     = Quando chega ao valor, passa para a próxima nota
   = Variável de quanto tempo ainda falta para acabar o som todo
 
+- Fazer atualização do score
+- Fazer rotina de perda de combustível
+
 - Printar combústivel na tela
 - Printar vidas na tela
 - Printar score na tela
-- Fazer setup inicial
-- Fazer subrotina de destruição do jogador (perda de uma vida)
+x Fazer setup inicial
+x Fazer subrotina de destruição do jogador (perda de uma vida)
 - Fazer subrotina de game over
+- Talvez mudar uma coisinha
 
 > Escolher todas as cores
 > Fazer rotina de reset de todos as variáveis em memória
