@@ -154,7 +154,10 @@ playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisã
 # Arg8: Endereço da velocidade de scroll da tela
 # Arg9: Endereço da variável de criação de tiro
 #############################################
-getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
+getInputRars:				addi		sp,	sp,	-4
+					sw		ra,	0(sp)
+
+					lw		t0,	0(a0)					# Pegamos o bit de controle
 					andi		t0,	t0,	1				# Aplicando bitmask
 					beq		t0,	zero,	getInputRars.noMove		# Se t0 == 0, não há input novo
 					lw		t0,	0(a1)					# Há input novo, então o guardamos
@@ -190,6 +193,10 @@ getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
 					sb		t2,	0(t3)					# Atualizamos a velocidade
 					sw		a5,	0(a7)
+					# 07/12/2019 - Coloca som
+					li		a0,	6
+					call		soundSelect
+					########
 					j		getInputRars.end
 					
 	getInputRars.testDown:		li		t1,	M_DOWN
@@ -217,7 +224,9 @@ getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 					lbu		t4, 	0(t3)					# 
 					sb		t4,	0(t2)					# Atualizamos (Isso é feito se não houver nenhum input novo)
 
-	getInputRars.end:		ret
+	getInputRars.end:		lw		ra,	0(sp)
+					addi		sp,	sp,	4
+					ret
 	
 #############################################
 # Recebimento de input (De1)
@@ -233,13 +242,15 @@ getInputRars:				lw		t0,	0(a0)					# Pegamos o bit de controle
 # Arg9: Endereço do sinal do botão do stick
 # Arg10: Endereço da variável de criação de tiro
 #############################################
-getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mudado se houver movimento
+getInputStick:				addi		sp,	sp,	-4
+					sw		ra,	0(sp)
+
+					sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mudado se houver movimento
 					la		t1,	Arg8					# Pegamos o endereço..
 					lw		t2,	0(t1)					# ..do scroll vertical
 					la		t3,	scrollSpeedNormal			# Pegamos o valor da velocidade padrão
 					lbu		t4, 	0(t3)					# 
 					sb		t4,	0(t2)					# Caso nada mude, sempre voltamos à velocidade padrão
-
 					lw		t0,	0(a0)					# Pegamos o valor do eixo X
 					lw		t1, 0(a1)					# Pegamos o valor do eixo Y
 					
@@ -287,6 +298,11 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					lw		t3,	0(t1)					# Pegamos o endereço onde está a velocidade de scroll da tela
 					sb		t2,	0(t3)					# Atualizamos a velocidade
 					sw		a5,	0(a7)					# Usa o sprite padrão
+					
+					# 07/12/2019 - Coloca som
+					li		a0,	6
+					call		soundSelect
+					########
 	
 	getInputStick.testButton:	la		t0,	Arg9					# Pegamos o endereço do botão
 					lw		t1,	0(t0)
@@ -297,4 +313,6 @@ getInputStick:				sw		a5,	0(a7)					# Começamos com o sprite padrão. Só será mud
 					li		t3,	1
 					sb		t3,	0(t2)					# Colocamos 1 para pedir criação de tiro
 
-	getInputStick.end:		ret
+	getInputStick.end:		lw		ra,	0(sp)
+					addi		sp,	sp,	4
+					ret

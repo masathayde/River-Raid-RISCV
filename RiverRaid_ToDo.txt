@@ -6,7 +6,7 @@ x Fazer com que uma ponte seja gerada a cada 16 blocos
 x Geração de blocos levando a dificuldade em consideração
 
 x Colocar explosão no rom
-- Diminuir largura de fuel e leuf
+x Diminuir largura de fuel e leuf
   : Talvez aumentar altura
 
 x Adicionar transparência na rotina drawObject
@@ -52,32 +52,28 @@ x Fazer rotina de reprodução de som
     = Quando chega ao valor, passa para a próxima nota
   = Variável de quanto tempo ainda falta para acabar o som todo
 
-- Fazer com que tiro não colida com explosão
+x Fazer com que tiro não colida com explosão
 
 x Fazer atualização do score
 x Fazer rotina de perda de combustível
 x Limitar quantidade máxima de combústivel
 x Mudar geração do mapa inicial
 
-: Opcional: Colocar som de voo
+x Opcional: Colocar som de voo
 
 x Printar combústivel na tela
 x Printar vidas na tela
 x Printar score na tela
 x Fazer setup inicial
 x Fazer subrotina de destruição do jogador (perda de uma vida)
-- Fazer subrotina de game over
-- Talvez mudar uma coisinha
+x Fazer subrotina de game over
+x Talvez mudar uma coisinha
 
 x Fazer menu principal
-- Colocar dificuldade no nível padrão
+x Colocar dificuldade no nível padrão
 
-> Escolher todas as cores
+x Escolher todas as cores
 x Fazer rotina de reset de todos as variáveis em memória
-> Definir ordem de execução das rotinas
-  - Tratamento de colisão
-  - Movimento dos objetos
-  - Movimento do jogador
-  - Pintura
-    - Pintura do jogador por último
+x Definir ordem de execução das rotinas
+
 > Fazer CD com TUDO

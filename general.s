@@ -5,8 +5,9 @@
 # a1: Número do som
 ############################
 # Cada som é composto por 4 words, então o offset é 16 bytes
-playSound:				beq		a1,	zero,	playSound.end			# Se for zero, nenhum som novo é tocado
-					addi		a1,	a1,	-1				# Som 1 -> Offset zero, porque soundSelect em zero significa nenhum som
+playSound:				bne		a1,	zero,	playSound.regular		# Se for zero, nenhum som novo é tocado
+					li		a1,	5
+	playSound.regular:		addi		a1,	a1,	-1				# Som 1 -> Offset zero, porque soundSelect em zero significa nenhum som
 					li		t0,	16
 					mul		t0,	t0,	a1				# Cálculo do offset
 					add		t1,	a0,	t0				# Aplicando offset

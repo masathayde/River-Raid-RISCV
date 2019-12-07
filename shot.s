@@ -81,6 +81,8 @@ drawShot:				addi		sp,	sp,	-4
 							bne		s0,	zero,	drawShot.skipCol# Se já tivermos feito colisão, não fazemos de novo		
 							lbu		t3,	0(t0)			# Pegamos a cor do pixel na tela		
 							beq		t3,	t2,	drawShot.skipCol# Se for igual ao rio, então não há colisão
+							li		t2,	EXPL			# Cor da explosão
+							beq		t3,	t2,	drawShot.skipCol# Se for explosão, então também não há colisão
 							li		s0,	1			# Houve colisão
 							sb		s0,	0(a6)			# Salvamos no endereço de colisão e não fazemos mais teste														
 	drawShot.skipCol:				sb		t1,	0(t0)			# Desenhamos na tela

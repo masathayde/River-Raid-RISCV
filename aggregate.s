@@ -1,5 +1,5 @@
 # Agregando várias rotinas e instruções usados na rotina principal para deixar o código mais compacto
-
+.text
 #############################################
 # Combina várias rotinas para geração de um objeto
 # a0: Valor de Y desejado para o novo objeto
@@ -107,3 +107,77 @@ setupCreateBlock:				addi		sp,	sp,	-4
 						lw		ra,	0(sp)
 						addi		sp,	sp,	4
 						ret
+
+#################################################
+# Reseta váriaveis para recomeço
+#################################################
+					# JOGADOR #
+resetVariables:				la		t0,	playerCrrSpr				
+					la		t1,	Plyr_0					# Sprite do jogador padrão
+					sw		t1,	0(t0)					# Salvando no espaço correto
+					la		t2,	playerPosX
+					li		t3,	PLAYER_INITIAL_X			# Coordenada X padrão do jogador
+					sh		t3,	0(t2)
+					la		t0,	playerDirection
+					sb		zero,	0(t0)
+					la		t1,	playerShotCount
+					sb		zero,	0(t1)
+					la		t2,	playerCollision
+					sb		zero,	0(t2)
+					la		t3,	playerShotCD
+					sb		zero,	0(t3)
+					la		t4,	playerCrashed
+					sb		zero,	0(t4)
+					la		t5,	playerFuel
+					li		t6,	INITIAL_FUEL
+					sh		t6,	0(t5)
+					
+					# PLAYFIELD #
+					la		t0,	pfWriteOffset
+					sb		zero,	0(t0)
+					la		t1,	pfReadStartOffset
+					li		t2,	160					# Offset de leitura padrão
+					sb		t2,	0(t1)
+					la		t3,	blockCounter
+					sb		zero,	0(t3)
+					
+					# OBJETOS #
+					la		t0,	objectListWriteIdx			# Resetando o índice da lista de objetos
+					li		t1,	0
+					sb		t1,	0(t0)				
+					la		t0,	object0					# Colocando zero em todos os objetos para indicar que não foram criados ainda
+					sw		zero,	0(t0)
+					la		t1,	object1
+					sw		zero,	0(t1)
+					la		t2,	object2
+					sw		zero,	0(t2)
+					la		t3,	object3
+					sw		zero,	0(t3)
+					la		t4,	object4
+					sw		zero,	0(t4)
+					la		t5,	object5
+					sw		zero,	0(t5)
+					
+					# TIROS #
+					la		t0,	shotCreate
+					sb		zero,	0(t0)
+					la		t1,	shotWriteIdx
+					sb		zero,	0(t1)
+					la		t6,	shotVector
+					li		t0,	100					# Tamanho do vetor de tiros, em words
+						
+	Reset.shotVector:		beq		t0,	zero,	Reset.shotVector.end
+							
+						sw		zero,	0(t6)
+						addi		t0,	t0,	-1
+						addi		t6,	t6,	4
+						j		Reset.shotVector
+						
+	Reset.shotVector.end:		la		t0,	nextSound
+					sb		zero,	0(t0)
+					la		t1,	blockWriteOffset
+					sb		zero,	0(t1)
+					la		t2,	lineDrawnCounter
+					sb		zero,	0(t2)
+					
+					ret

@@ -1,6 +1,6 @@
 # Cores devem ser repetidas 4 vezes na word
 .eqv BANK_COLOR_4 0x10101010 										# Cor da costa, deve ser verde
-.eqv RIVER_COLOR_4 0xb0b0b0b0 										# Cor do rio, azul
+.eqv RIVER_COLOR_4 0xE8E8E8E8 #0xb0b0b0b0 										# Cor do rio, azul
 .eqv SCORE_COLOR_4 0x65656565
 .eqv SCORE_DIV_4 0x00000000
 .eqv INFO_COLOR 0x00006500	# Cor de background deve ser igual a Score_color
@@ -8,18 +8,18 @@
 
 # As cores são essenciais para os testes de colisão e precisam ser diferentes (talvez)
 .eqv BANK_COLOR 0x10
-.eqv RVCL 0xb0 # river color
+.eqv RVCL 0xE8 # 0xb0 # river color
 .eqv SCORE_COLOR 0x0b
 .eqv SHIP 0x00 # ship color
 .eqv PLNE 0x90 # plane color
 .eqv FUEL 0x26 # fuel color
-.eqv LEUF 0x62 # bad fuel color
+.eqv LEUF 0xc3 # bad fuel color
 .eqv HOUS 0xFF # house color
 .eqv TRNK 0xFF # tree trunk color
 .eqv TREE 0xFF # tree leaves color
-.eqv BRDG 0x00 # bridge color
+.eqv BRDG 0xF5 # bridge color
 .eqv EXPL 0xb6 # explosion color
-.eqv PLYR 0xFF # Player color
+.eqv PLYR 0x7F # Player color
 .eqv SHOT 0xFF # Shot color
 
 .eqv M_LEFT 97 # a
@@ -38,6 +38,7 @@
 .eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
 .eqv INITIAL_LIVES 4
 .eqv INITIAL_FUEL 300
+.eqv PLAYER_INITIAL_X 140
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -84,9 +85,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					la		t4,	playerLives
 					li		t5,	INITIAL_LIVES
 					sb		t5,	0(t4)
-
-
-	InitSetup:			
+			
 # ______ _____ _____ _____ _____ 
 # | ___ \  ___/  ___|  ___|_   _|
 # | |_/ / |__ \ `--.| |__   | |  
@@ -96,80 +95,14 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #	
 #	Resetando todos as variáveis para reínicio do jogo. Estas variáveis sempre são resetadas depois de uma perda de vida.
 
-					# JOGADOR #										
-					la		t0,	playerCrrSpr				
-					la		t1,	Plyr_0					# Sprite do jogador padrão
-					sw		t1,	0(t0)					# Salvando no espaço correto
-					la		t2,	playerPosX
-					li		t3,	120					# Coordenada X padrão do jogador
-					sh		t3,	0(t2)
-					la		t0,	playerDirection
-					sb		zero,	0(t0)
-					la		t1,	playerShotCount
-					sb		zero,	0(t1)
-					la		t2,	playerCollision
-					sb		zero,	0(t2)
-					la		t3,	playerShotCD
-					sb		zero,	0(t3)
-					la		t4,	playerCrashed
-					sb		zero,	0(t4)
-					la		t5,	playerFuel
-					li		t6,	INITIAL_FUEL
-					sh		t6,	0(t5)
-					
-					# PLAYFIELD #
-					la		t0,	pfWriteOffset
-					sb		zero,	0(t0)
-					la		t1,	pfReadStartOffset
-					li		t2,	160					# Offset de leitura padrão
-					sb		t2,	0(t1)
-					la		t3,	blockCounter
-					sb		zero,	0(t3)
-					
-					# OBJETOS #
-					la		t0,	objectListWriteIdx			# Resetando o índice da lista de objetos
-					li		t1,	0
-					sb		t1,	0(t0)				
-					la		t0,	object0					# Colocando zero em todos os objetos para indicar que não foram criados ainda
-					sw		zero,	0(t0)
-					la		t1,	object1
-					sw		zero,	0(t1)
-					la		t2,	object2
-					sw		zero,	0(t2)
-					la		t3,	object3
-					sw		zero,	0(t3)
-					la		t4,	object4
-					sw		zero,	0(t4)
-					la		t5,	object5
-					sw		zero,	0(t5)
-					
-					# TIROS #
-					la		t0,	shotCreate
-					sb		zero,	0(t0)
-					la		t1,	shotWriteIdx
-					sb		zero,	0(t1)
-					la		t6,	shotVector
-					li		t0,	100					# Tamanho do vetor de tiros, em words
-	Reset.shotVector:		beq		t0,	zero,	Reset.shotVector.end
-							
-						sw		zero,	0(t6)
-						addi		t0,	t0,	-1
-						addi		t6,	t6,	4
-						j		Reset.shotVector
-	Reset.shotVector.end:
-					
-			
-					la		t0,	nextSound
-					sb		zero,	0(t0)
-					la		t1,	blockWriteOffset
-					sb		zero,	0(t1)
-					la		t2,	lineDrawnCounter
-					sb		zero,	0(t2)
+															
+	InitSetup:			call		resetVariables
 					
 
 
 	# Os primeiros blocos são sempre neutros #
-	# Primeiro bloco é sempre ponte
+	# Primeiro bloco é sempre "ponte"
+	# Não geramos objetos nos dois primeiros blocos
 					li		a0,	0x52					# 0x52 Cria um bloco onde cabe uma ponte
 					call		setupCreateBlock
 					li		a0,	0x07
@@ -194,8 +127,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 					
 					li		a0,	-6
 					call		setupGenerateObject
-						
-	InitSetup.genMap.end:
 	
 	
 	InitSetup.end:
@@ -593,6 +524,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						
 						la		t0,	blockCounter
 						lbu		t1,	0(t0)				# Vemos quantos blocos foram gerados
+						li		t2,	13
+						beq		t1,	t2,	Update.genPreBridge	
 						li		t2,	14				
 						beq		t1,	t2,	Update.genPreBridge	# Se estivermos criando o bloco 15, queremos que seja o mais largo possível
 						li		t2,	15
@@ -868,7 +801,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
                      				
                      				la		t0,	nextSound			# Endereço de seleção de som
                      				lbu		t1,	0(t0)				# Pegamos o som
-						beq		t1,	zero,	Sound.end		# Se for zero, não tocamos nada
+						#beq		t1,	zero,	Sound.end		# Se for zero, não tocamos nada
 						la		a0,	Sound1				# Primeiro som da tabela
 						mv		a1,	t1
 						call		playSound
@@ -1028,6 +961,7 @@ defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogad
 						addi		t1,	t1,	-1			# Perde-se uma
 						bge		zero,	t1,	defeatHandler.gameOver	# Se for <= 0, game over
 						sb		t1,	0(t0)				# Salva novo número de vidas
+						
 						la		a0,	readyString
 						li		a1,	135				# Coordenada X de escrita
 						li		a2,	100				# Coordenada Y
@@ -1049,8 +983,33 @@ defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogad
 						j		InitSetup
 						
 						
-	defeatHandler.gameOver: li a7, 10
-				ecall # placeholder						
+	defeatHandler.gameOver: 		la		a0,	gameoverString
+						li		a1,	125				# Coordenada X de escrita
+						li		a2,	100				# Coordenada Y
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
+						li		a7,	104
+						ecall
+						
+						la		t0,	frameToShow			# Terminamos de desenhar, então mostramos o frame
+						lbu		t1,	0(t0)
+						li		t0,	VGAFRAMESELECT
+						sb		t1,	0(t0)
+
+						li		a0,	2000
+						li		a7,	32
+						ecall							# Esperamos mais 2 segundos antes de voltar ao jogo
+						
+						# Atualizando o Hi Score, se necessário
+						la		t0,	HiScore
+						lw		t1,	0(t0)
+						la		t2,	playerScore
+						lw		t3,	0(t2)
+						bltu		t3,	t1,	defeatHandler.gameOver.noHiScore
+						sw		t3,	0(t0)				# Salvamos o score atual no Hi Score
+	defeatHandler.gameOver.noHiScore:	j		mainMenu				# Volta ao menu principal
+																	
 	
 #############################
 # Menu principal			
@@ -1078,7 +1037,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 							
 						# Printando todas as mensagens
 	gameMenu.blackout.end:			la		a0,	titleString
-						li		a1,	100				# Coordenada X de escrita
+						li		a1,	120				# Coordenada X de escrita
 						li		a2,	90				# Coordenada Y
 						li		a3,	0x00ff				# Cor
 						la		t0,	frameToShow
@@ -1096,7 +1055,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 						ecall							# Printa mensagem de na tela
 						
 						la		a0,	promptString
-						li		a1,	100				# Coordenada X de escrita
+						li		a1,	80				# Coordenada X de escrita
 						li		a2,	110				# Coordenada Y
 						li		a3,	0x00ff				# Cor
 						la		t0,	frameToShow
@@ -1105,7 +1064,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 						ecall
 						
 						la		a0,	promptString2
-						li		a1,	100				# Coordenada X de escrita
+						li		a1,	80				# Coordenada X de escrita
 						li		a2,	120				# Coordenada Y
 						li		a3,	0x00ff				# Cor
 						la		t0,	frameToShow
@@ -1177,7 +1136,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 							
 						# Printando mensagem de saída
 	gameMenu.quitter.blackout.end:		la		a0,	quitString					
-						li		a1,	100				# Coordenada X de escrita
+						li		a1,	90				# Coordenada X de escrita
 						li		a2,	110				# Coordenada Y
 						li		a3,	0x00ff				# Cor
 						la		t0,	frameToShow
@@ -1223,5 +1182,5 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 .include "objects.s"
 .include "general.s"
 .include "rom.s"
+.include "aggregate.s"
 .include "SYSTEMv17.s"
-.include "wip.s"

@@ -49,7 +49,7 @@
 	playerCrrSpr: .word 0 # Endereço do sprite atual do avião
 	playerScore: .word 0 # Pontuação atual
 	playerFuel: .half INITIAL_FUEL
-	playerPosX: .half 120
+	playerPosX: .half PLAYER_INITIAL_X
 	playerLives: .byte INITIAL_LIVES
 	playerPosY: .byte 155 # Normalmente, não deve mudar
 	playerDirection: .byte 0 # Usado para decidir se haverá flip no sprite
