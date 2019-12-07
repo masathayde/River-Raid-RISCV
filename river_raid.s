@@ -1,7 +1,10 @@
 # Cores devem ser repetidas 4 vezes na word
 .eqv BANK_COLOR_4 0x10101010 										# Cor da costa, deve ser verde
 .eqv RIVER_COLOR_4 0xb0b0b0b0 										# Cor do rio, azul
-.eqv SCORE_COLOR_4 0x0b0b0b0b
+.eqv SCORE_COLOR_4 0x65656565
+.eqv SCORE_DIV_4 0x00000000
+.eqv INFO_COLOR 0x00006500	# Cor de background deve ser igual a Score_color
+.eqv SCRNUM_COLOR 0x000065da
 
 # As cores são essenciais para os testes de colisão e precisam ser diferentes (talvez)
 .eqv BANK_COLOR 0x10
@@ -33,7 +36,7 @@
 .eqv PLAYER_MISSILE DELAY 15 # Quanto tempo deve-se esperar para poder atirar de novo (em ciclos)
 .eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
 .eqv INITIAL_LIVES 4
-.eqv INITIAL_FUEL 100
+.eqv INITIAL_FUEL 200
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -335,7 +338,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	# DESENHO DE OBJETOS 2 #
 	########################
 	# De novo? Infelizmente.
-	# Maneira mais fácil que eu encontrei para que tiros e objetos se detectem no mesmo frame corretamente
+	# Maneira mais fácil que eu encontrei para que tiros e objetos se detectem no mesmo frame corretamente.
 	
 						li		s0,	0				# s0 = i
 						li		s1,	6
@@ -360,8 +363,68 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	Render.drawObjects2.empty:			addi		s0,	s0,	1		# ++i
 							add		s2,	s2,	s3		# Object[] + 1
 							j		Render.drawObjects2
-	Render.drawObjects2.end:						
-													
+	Render.drawObjects2.end:
+	
+	###############
+	# INFORMAÇÕES #
+	###############
+	# Combústivel restante, vidas, score
+							# Printando combústivel com o ecall
+							la		a0,	fuelString
+							li		a1,	20
+							li		a2,	170
+							li		a3,	INFO_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	104
+							ecall							
+							la		t0,	playerFuel
+							lbu		a0,	0(t0)
+							li		a1,	70
+							li		a2,	170
+							li		a3,	INFO_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	136
+							ecall
+							la		a0,	fuelString2
+							li		a1,	97
+							li		a2,	170
+							li		a3,	INFO_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	104
+							ecall	
+							
+							# Printando o número de vidas												
+							la		a0,	livesString
+							li		a1,	20
+							li		a2,	190
+							li		a3,	INFO_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	104
+							ecall
+							la		t0,	playerLives
+							lbu		a0,	0(t0)
+							li		a1,	70
+							li		a2,	190
+							li		a3,	INFO_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	136
+							ecall
+							
+							# Printando a pontuação
+							la		t0,	playerScore
+							lbu		a0,	0(t0)
+							li		a1,	230
+							li		a2,	170
+							li		a3,	SCRNUM_COLOR
+							la		t0,	frameToShow
+							lbu		a4,	0(t0)
+							li		a7,	136
+							ecall						
 ########################################
 #  _   _____________  ___ _____ _____ 
 # | | | | ___ \  _  \/ _ \_   _|  ___|
@@ -796,11 +859,27 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t1,	playerCrashed
 						sb		t0,	0(t1)				# Setada
 	Player.noCrash:				mv		a0,	a1
-						call		soundSelect				# Rotina decide se o som irá tocar
-						j		Sound.start				# Pula para a próxima seção			
-	
-																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																									
-																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																									
+						call		soundSelect				# Rotina decide se o som irá tocar			
+	###############
+	# COMBÚSTIVEL #
+	###############
+						la		t0,	playerFuel			# Endereço onde está a quantidade de combústivel
+						lbu		s1,	0(t0)				# Pegamos o valor
+						la		t2,	fuelMax				# Quantidade máxima de combústivel
+						lbu		t3,	0(t2)
+						ble		s1,	t3,	Player.fuel.noAdjust	# Se o combústivel estiver acima do normal, ajustamos
+						mv		s1,	t3				# Limitado à quantidade máxima
+	Player.fuel.noAdjust:			la		t2,	fuelLossRate			# Taxa de perda de combústivel
+						lbu		t3,	0(t2)				# Pegamos esse valor também
+						sub		s1,	s1,	t3			# Atualizamos a quantidade
+						bgt		s1,	zero,	Player.fuel.bge0	# Se cair abaixo de 0, é derrota
+						li		s1,	0
+						la		t2,	playerCrashed
+						li		t3,	1
+						sb		t3,	0(t2)				# Setamos a booleana de derrota
+						mv		a0,	t3
+						call		soundSelect					
+	Player.fuel.bge0:			sb		s1,	0(t0)				# Salvamos quantidade atualizada																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			
 ##########################																		
 #  _____  ________  ___
 # /  ___||  _  |  \/  |
@@ -929,9 +1008,11 @@ defeatHandler:					la		t0,	playerPosX			# Pinta uma explosão na posição do jogad
 						bge		zero,	t1,	defeatHandler.gameOver	# Se for <= 0, game over
 						sb		t1,	0(t0)				# Salva novo número de vidas
 						la		a0,	readyString
-						li		a1,	140				# Coordenada X de escrita
+						li		a1,	135				# Coordenada X de escrita
 						li		a2,	100				# Coordenada Y
-						li		a3,	0xff				# Cor
+						li		a3,	0x00ff				# Cor
+						la		t0,	frameToShow
+						lbu		a4,	0(t0)
 						li		a7,	104
 						ecall							# Printa mensagem de alerta na tela
 						#ebreak

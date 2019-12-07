@@ -186,8 +186,17 @@ renderPlayfield:			li		t0,	0					# i = 0
 	renderPlayfield.drawLine.noAdjust:	addi		t0,	t0,	1											
 						j		renderPlayfield.drawLine
 			
-	# Pintamos a parte inferior da tela, onde irão as informações do jogo																																																																																
-	renderPlayfield.drawLine.end:		li		t1,	6400				# Número de pedaços a pintar
+	# Pintamos a parte inferior da tela, onde irão as informações do jogo
+	renderPlayfield.drawLine.end:		li		t1,	80				# Pintamos a divisória entre barra de informações e campo de jogo
+						li		a5,	SCORE_DIV_4
+	renderPlayfield.drawDiv:		beq		t1,	zero,	renderPlayfield.drawScore
+						
+							sw		a5,	0(a3)
+							addi		a3,	a3,	4
+							addi		t1,	t1,	-1
+							j		renderPlayfield.drawDiv
+																																																																																																																																																																	
+	renderPlayfield.drawScore:		li		t1,	6320				# Número de pedaços a pintar
 						li		a5,	SCORE_COLOR_4	
 	renderPlayfield.drawBottom:		beq		t1,	zero,	renderPlayfield.drawBottom.end
 							
