@@ -103,6 +103,7 @@
 	playerCollision: .byte 0 # 0 - sem colisão; 1 - colisão com algo que destrói ; 2 - colisão com fuel ; 3 - colisão com bad fuel
 	playerSpeedX: .byte 4 # Velocidade em pixels/frame
 	playerShotCD: .byte 0 # Número de frames a esperar para atirar de novo
+	playerCrashed: .byte 0 # Usada para rotina de perda de vida
                                                                                                       
 ##########################################################                                                                                                                                                                                                                
 # ______ _       _____   _______ _____ _____ _    ______ 
@@ -430,6 +431,16 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 #  \___/\_|   |___/ \_| |_/\_/ \____/ 
 ########################################        
 
+	#######################
+	# DETECÇÃO DE DERROTA #
+	#######################
+	
+						la		t0,	playerCrashed
+						lbu		t1,	0(t0)				# Checagem de booleana de derrota
+						beq		t1,	zero,	Update.noCrash
+						call		defeatHandler
+	
+	Update.noCrash:
 	########################
 	# ATUALIZAÇÃO DE TIROS #
 	########################
@@ -840,10 +851,16 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		a0,	0(t0)				# Booleana de colisão
 						la		a1,	playerFuel			# Endereço do valor de combústivel atual
 						call		playerColHandler
-						beq		a0,	t0,	Player.crash		# Se houver colisão, vamos para a rotina de perda de vida
-	Player.crash:				mv		a0,	a1
-						call		soundSelect				# Rotina decide se o som irá tocar				
-																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																			
+						li		t0,	1
+						bne		a0,	t0,	Player.noCrash		# Se houver colisão, setamos uma booleana
+						la		t1,	playerCrashed
+						sb		t0,	0(t1)				# Setada
+	Player.noCrash:				mv		a0,	a1
+						call		soundSelect				# Rotina decide se o som irá tocar
+						j		Sound.start				# Pula para a próxima seção			
+	
+																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																									
+																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																									
 ##########################																		
 #  _____  ________  ___
 # /  ___||  _  |  \/  |
@@ -852,6 +869,8 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 # /\__/ /\ \_/ / |  | |
 # \____/  \___/\_|  |_/
 ##########################                   
+      Sound.start:               				
+                     				
                      				la		t0,	nextSound			# Endereço de seleção de som
                      				lbu		t1,	0(t0)				# Pegamos o som
 						beq		t1,	zero,	Sound.end		# Se for zero, não tocamos nada
@@ -908,7 +927,6 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						# Fim do programa
 						li		a7,	10				
 						ecall	
-						
 			
 
 ############################################################
@@ -1315,7 +1333,7 @@ playerColHandler:			beq		a0,	zero,	playerColHandler.noCol		# Se não houve colisã
 					li		t0,	1
 					bne		a0,	t0,	playerColHandler.test2		# Colisão fatal
 					li		a0,	1					# Booleana de crash
-					li		a1,	1					# Som 1
+					li		a1,	2					# Som 2
 					j		playerColHandler.end
 					
 	playerColHandler.test2:		li		t0,	2
@@ -1934,7 +1952,15 @@ memcpy:					mv 		t0,	zero
 							
 	memcpy.L1.end:			ret
 
-																																		
+#############################
+# Rotina de derrota			
+# a0: Endereço da tabela
+############################			
+# Usaremos variáveis globais
+
+defeatHandler:				
+																																																														
+																																																																																																
 ##############################################################################################
 #
 # 8888888b.   .d88888b.  888b     d888      88888888888       888      888                   
