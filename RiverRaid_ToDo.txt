@@ -1,5 +1,8 @@
 River Raid Todo List
 
+x Ajustar instrumentos do Midi ecall para a placa
+- Habilitar input do stick
+
 x Colocar ponte no .data
 x Definir variável de dificuldade
 x Fazer com que uma ponte seja gerada a cada 16 blocos

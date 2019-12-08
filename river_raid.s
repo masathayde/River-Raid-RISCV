@@ -1211,6 +1211,6 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 .include "shot.s"
 .include "objects.s"
 .include "general.s"
-.include "rom.s"
+.include "romde1.s"
 .include "aggregate.s"
 .include "SYSTEMv17.s"

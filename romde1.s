@@ -10,7 +10,7 @@
 # 888   T88b  "Y88888P"  888       888          888  "Y888888 88888P"  888  "Y8888   88888P'
 #                                                                                                                                           
 ################################################################################################
-
+# ROM file com sons alterados para uso na De1 (Tem menos instrumentos implementados que o RARS)
 .data
 .align 2
 
@@ -527,43 +527,43 @@ Shot_f0:	.byte SHOT, SHOT
 #########################
 # Objeto atingido
 .align 2
-Sound1:		.word 39		# 00 Nota
-		.word 800		# 01 Duração em ms
-		.word 127		# 02 Instrumento
-		.word 110		# 03 Volume
+Sound1:		.word 74		# 00 Nota
+		.word 500		# 01 Duração em ms
+		.word 5			# 02 Instrumento
+		.word 90		# 03 Volume
 		
 		
 # Tiro
-SoundShot:	.word 67		# 00 Nota
-		.word 500		# 01 Duração em ms
-		.word 127		# 02 Instrumento
-		.word 100		# 03 Volume
+SoundShot:	.word 48		# 00 Nota
+		.word 300		# 01 Duração em ms
+		.word 9			# 02 Instrumento
+		.word 90		# 03 Volume
 		
 # Recarga
 SoundRefuel:	.word 75		# 00 Nota
 		.word 150		# 01 Duração em ms
-		.word 105		# 02 Instrumento
+		.word 7			# 02 Instrumento
 		.word 60		# 03 Volume
 		
 # Drenagem
 SoundDrain:	.word 30		# 00 Nota
 		.word 200		# 01 Duração em ms
-		.word 105		# 02 Instrumento
+		.word 7			# 02 Instrumento
 		.word 60		# 03 Volume
 		
-soundFly:	.word 35		# 00 Nota
-		.word 1000		# 01 Duração em ms
-		.word 126		# 02 Instrumento
-		.word 60		# 03 Volume
+soundFly:	.word 40		# 00 Nota
+		.word 500		# 01 Duração em ms
+		.word 4			# 02 Instrumento
+		.word 50		# 03 Volume
 		
 soundFlyFast:	.word 45		# 00 Nota
-		.word 1000		# 01 Duração em ms
-		.word 126		# 02 Instrumento
+		.word 500		# 01 Duração em ms
+		.word 4			# 02 Instrumento
 		.word 60		# 03 Volume
 		
 soundFlySlow:	.word 25		# 00 Nota
-		.word 1000		# 01 Duração em ms
-		.word 126		# 02 Instrumento
+		.word 500		# 01 Duração em ms
+		.word 4			# 02 Instrumento
 		.word 60		# 03 Volume
 		
 ###############################
