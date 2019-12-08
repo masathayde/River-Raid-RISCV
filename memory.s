@@ -27,7 +27,7 @@
 	scrollSpeed: .byte 2 # Velocidade de scroll vertical atual
 	
 	scrollSpeedNormal: .byte 2 # Velocidade de scroll vertical padrão
-	scrollSpeedFast: .byte 4 # Velocidade de scroll vertical rápida
+	scrollSpeedFast: .byte 5 # Velocidade de scroll vertical rápida
 	scrollSpeedSlow: .byte 1 # Velocidade devagar
 
 	blockWriteOffset: .byte 0

@@ -227,6 +227,10 @@ moveObjectX:				blt		a1,	zero,	moveObjectX.noUpdate		# Se Y < 0, não movimentamo
 					add		t0,	t0,	a5				# VGAStart + t0 é o endereço
 					li		t1,	3					# Tipo de objeto do avião
 					beq		a6,	t1,	moveObjectX.noBankColl		# Tipo especial de movimento, não colide com a terra
+					li		t1,	5					# Tipo de objeto do avião vertical
+					beq		a6,	t1,	moveObjectX.noBankColl		# Tipo especial de movimento, não colide com a terra
+					li		t1,	96					# Tipo de objeto avião vertical que segue
+					beq		a6,	t1,	moveObjectX.noBankColl
 					
 					# Detecção de terra
 					# O pixel usado para detectar colisão depende da direção
@@ -293,6 +297,7 @@ animateObject:				addi		sp,	sp,	-8
 	
 	animateObject.special:		# Lembrando que a0 e a1 estão inalterados e vão ser usados na rotina a seguir
 					jalr		ra,	a4,	0						# Vamos até lá
+					li		s0,	0							# Resetando o contador
 	animateObject.end:		mv		a2,	s0							# Contador atualizado
 					
 					
@@ -355,3 +360,66 @@ stopExplosion:				addi		sp,	sp,	-4
 					lw		ra,	0(sp)
 					addi		sp,	sp,	4
 					ret
+
+############################
+# Rotina de troca de Verp para Verp homing
+# a0: Endereço do objeto
+###########################
+# Rotina deve determinar se o jogador está em uma posição na qual o avião poderá atingir com um movimento diagonal
+# Essencialmente, fazemos uma linha do avião até o jogador, e se a linha estiver próxima o suficiente, mudamos o objeto para Verp homing
+
+VerpAI:					addi		sp,	sp,	-16
+					sw		ra,	0(sp)
+					sw		s0,	4(sp)					# Para guardar X atual do avião
+					sw		s1,	8(sp)					# Para guardar X atual do jogador
+					sw		s2,	12(sp)					# Para guardar Y atual do avião
+
+					lh		s0,	16(a0)					# Valor de X atual do avião
+					la		t1,	playerPosX				# Valor X do jogador
+					lh		s1,	0(t1)
+					lb		s2,	18(a0)					# Valor Y atual do avião
+					
+					li		t0,	1					# Sinal de m (inclinação da reta)
+					blt		s0,	s1,	VerpAI.posM			# Se o avião estiver mais à esquerda, mantemos positiva
+					li		t0,	-1					# Se não, fazemos negativa
+	VerpAI.posM:			la		t1,	scrollSpeedNormal
+					lbu		t2,	0(t1)
+					addi		t2,	t2,	VERP_SPEED			# Cálculo de Delta Y do avião
+					la		t4,	VerpHSpeed
+					lbu		t3,	(t4)					# Delta X do avião
+					fcvt.s.w	ft0,	t2					# Conversão para float para melhorar precisão
+					fcvt.s.w	ft1,	t3	
+					fcvt.s.w	ft2,	t0					# Sinal de m
+					fdiv.s		ft0,	ft0,	ft1				# Valor absoluto de m
+					fmul.s		ft0,	ft0,	ft2				# m calculado
+					fcvt.s.w	ft1,	s0					# Valor de X do avião
+					fcvt.s.w	ft2,	s1					# Valor de X do jogador
+					fsub.s		ft1,	ft2,	ft1				# X - Xo
+					fmul.s		ft0,	ft0,	ft1				# m(X-Xo)
+					fcvt.s.w	ft1,	s2					# Convertendo valor de Y do avião para float
+					fadd.s		ft0,	ft0,	ft1				# Yo + m(X-Xo)
+					la		t0,	playerPosY
+					lbu		t1,	0(t0)					# Y atual do jogador
+					fcvt.s.w	ft1,	t1					# Conversão para float
+					fsub.s		ft1,	ft1,	ft0				# Y - Yo - m(X-Xo)
+					li		t2,	10	# 10				# Valor para comparação
+					fcvt.s.w	ft2,	t2
+					flt.s		t0,	ft1,	ft2				# Comparação
+					beq		t0,	zero,	VerpAI.end			# Se for maior que o valor de comparação, ainda não é hora de trocar
+					
+					la		a1,	objectVerpH				# Pegando o endereço de VerPH para troca
+					la		t0,	objectSize
+					lbu		a2,	0(t0)					# Tamanho padrão do objeto
+					call		memcpy						# Fazendo troca
+					sh		s0,	16(a0)					# Colocando o valor certo de X
+					sh		s2,	18(a0)					# Colocando o valor certo de Y
+					blt		s0,	s1,	VerpAI.end			# Testamos se está indo para a direita ou para a esquerda
+					li		t0,	1
+					sb		t0,	25(a0)					# Indo para a esquerda
+					
+	VerpAI.end:			lw		ra,	0(sp)
+					lw		s0,	4(sp)
+					lw		s1,	8(sp)
+					lw		s2,	12(sp)
+					addi		sp,	sp,	16
+					ret				

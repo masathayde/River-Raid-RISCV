@@ -14,6 +14,7 @@
 .eqv PLNE 0x90 # plane color
 .eqv FUEL 0x26 # fuel color
 .eqv LEUF 0xc3 # bad fuel color
+.eqv VERP 0x47 # Vertical plane color
 .eqv HOUS 0xFF # house color
 .eqv TRNK 0xFF # tree trunk color
 .eqv TREE 0xFF # tree leaves color
@@ -39,6 +40,7 @@
 .eqv INITIAL_LIVES 4
 .eqv INITIAL_FUEL 300
 .eqv PLAYER_INITIAL_X 140
+.eqv VERP_SPEED 2
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -431,7 +433,19 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 							beq		t0,	zero,	Update.objectUpdate.nope # Se estiver vazio, não pulamos para o próximo
 							la		t0,	scrollSpeed		# Velocidade de scroll vertical
 							lbu		t1,	0(t0)			# Pegamos para atualizar a posição de todos os objetos
-							lh		t2,	18(s2)			# Coordenada Y
+	# VERP HACK {					
+							lbu		t3,	20(s2)			# Endereço do tipo
+							li		t4,	5			# Tipo do VerP
+							beq		t3,	t4,	Update.objectUpdate.VerpExc # Se não for Verp, não fazemos nada
+							li		t4,	96			# Tipo Verp Homing
+							beq		t3,	t4,	Update.objectUpdate.VerpExc
+							j		Update.objectUpdate.noVerpExc	# Se não for nenhuma das exceções, procedimento normal						
+	Update.objectUpdate.VerpExc:			li		t5,	VERP_SPEED		# Se for Verp, sua velocidade de descida é maior, alteramos t1
+							la		t4,	scrollSpeed
+							lbu		t6,	0(t4)
+							add		t1,	t6,	t5							
+	# } VERP HACK
+	Update.objectUpdate.noVerpExc:			lh		t2,	18(s2)			# Coordenada Y
 							add		t2,	t2,	t1
 							sh		t2,	18(s2)			# Atualizado
 							
@@ -593,7 +607,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						lbu		t3,	0(t0)				# Pegamos o bloco atual para salvar em blockPrevious
 						sb		t3,	0(t1)				# Salvando em Previous
 						sb		t2,	0(t0)				# Salvando o bloco novo em Current
+						
+						
 						j		Update.genObject			# Seguimos para a criação do objeto
+					
 						
 	Update.normalBlock:			la		a0,	blockCurrent			# Geração do bloco novo
 						la		a1,	blockPrevious
@@ -625,8 +642,9 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		a2,	objectFuel			# Endereço da tabela de objetos (o primeiro elemento é fuel)
 						la		t1,	objectSize
 						lbu		a3,	0(t1)				# Tamanho do objeto
-						mv		a4,	s0				# Probabilidade guardada antes de createBlock
-						mv		a5,	s1				# Outro número pego antes de createBlock
+						la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
+						lbu		a4,	3(t0)				# Probabilidade	de fuel
+						lbu		a5,	4(t0)				# Índice máximo dos inimigos
 						call		generateObject
 						
 						la		t0,	blockCurrent
@@ -889,8 +907,20 @@ scoreUpdater:					beq		a1,	zero,	scoreUpdater.end	# Se não houve colisão, não é 
 						j		scoreUpdater.end
 	
 	scoreUpdater.test4:			li		t0,	4
-						bne		a2,	t0,	scoreUpdater.test99	# Bad Fuel
+						bne		a2,	t0,	scoreUpdater.test5	# Bad Fuel
 						addi		t6,	t6,	80			# Vale 80 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+						
+	scoreUpdater.test5:			li		t0,	5
+						bne		a2,	t0,	scoreUpdater.test96	# Vertical Plane (Straight)
+						addi		t6,	t6,	50			# Vale 50 pontos
+						sw		t6,	0(a0)				# Atualizando
+						j		scoreUpdater.end
+						
+	scoreUpdater.test96:			li		t0,	96
+						bne		a2,	t0,	scoreUpdater.test99	# Vertical Plane (Homing)
+						addi		t6,	t6,	100			# Vale 100 pontos
 						sw		t6,	0(a0)				# Atualizando
 						j		scoreUpdater.end
 						

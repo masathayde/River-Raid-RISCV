@@ -207,6 +207,11 @@ getInputRars:				addi		sp,	sp,	-4
 					lw		t3,	0(t1)					#
 					sb		t2,	0(t3)					# Atualizamos a velocidade
 					sw		a5,	0(a7)
+					# 07/12/2019 - Coloca som
+					li		a0,	7
+					call		soundSelect
+					########
+					
 					j		getInputRars.end
 					
 	getInputRars.testFire:		li		t1,	M_FIRE
@@ -252,7 +257,7 @@ getInputStick:				addi		sp,	sp,	-4
 					lbu		t4, 	0(t3)					# 
 					sb		t4,	0(t2)					# Caso nada mude, sempre voltamos à velocidade padrão
 					lw		t0,	0(a0)					# Pegamos o valor do eixo X
-					lw		t1, 0(a1)					# Pegamos o valor do eixo Y
+					#lw		t1, 	0(a1)					# Pegamos o valor do eixo Y
 					
 					
 					li		t1,	400					# Valor do deadzone em direção a zero
@@ -288,6 +293,11 @@ getInputStick:				addi		sp,	sp,	-4
 					lw		t3,	0(t1)					#
 					sb		t2,	0(t3)					# Atualizamos a velocidade
 					sw		a5,	0(a7)					# Usa o sprite padrão
+					# 07/12/2019 - Coloca som
+					li		a0,	7
+					call		soundSelect
+					########
+					
 					j		getInputStick.testButton
 	
 	getInputStick.testYp:		li		t1,	3695					# Deadzone em direção a 1023

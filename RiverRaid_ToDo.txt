@@ -72,6 +72,18 @@ x Talvez mudar uma coisinha
 x Fazer menu principal
 x Colocar dificuldade no nível padrão
 
+
+x Adicionar Vertical Plane
+  x Fazer imagem (só inverter sprite do jogador e trocar cor)
+  x Definir parâmetros
+  x Adicionar exceção de colisão na rotina de movimento horizontal
+  x Adicionar exceção na rotina de movimento vertical
+  x Fazer homing em direção ao jogador
+    x Precisaria de um sprite diagonal (Usar o f1 do jogador)
+    x Adicionar rotina especial de homing
+
+x Bug da ponte
+
 x Escolher todas as cores
 x Fazer rotina de reset de todos as variáveis em memória
 x Definir ordem de execução das rotinas

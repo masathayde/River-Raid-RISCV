@@ -39,12 +39,13 @@ soundSelect:				beq		a0,	zero,	soundSelect.nop			# Se o novo som == 0, ignora-se
 # a0 : Endereço de destino
 ###############################
 memcpy:					mv 		t0,	zero
+					mv		t6,	a0
 	memcpy.L1:			beq		t0,	a2,	memcpy.L1.end
 		
 						lbu		t1,	(a1)
-						sb		t1,	(a0)
+						sb		t1,	(t6)
 						addi		t0, 	t0,	1
-						addi		a0,	a0,	1
+						addi		t6,	t6,	1
 						addi		a1,	a1,	1
 						j		memcpy.L1
 							

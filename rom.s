@@ -14,30 +14,6 @@
 .data
 .align 2
 
-# TEST
-testObjY: .word -30
-testObj: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00  
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, RVCL, RVCL, RVCL, RVCL, RVCL 
-	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-
-
 # Helicopter
 Heli_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
@@ -169,6 +145,51 @@ Leuf_f0: .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF,
 	 .byte RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, LEUF, RVCL, RVCL, RVCL, RVCL
 	 
+# Vertical Plane	 
+Verp_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, VERP, VERP, VERP, RVCL, RVCL, RVCL, VERP, VERP, VERP, RVCL, RVCL, VERP, VERP, VERP, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, VERP, VERP, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	
+# Vertical Plane Homing	 
+Verh_f0:.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, VERP, VERP, VERP, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, VERP, VERP, VERP, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, VERP, VERP, VERP, VERP, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, VERP, VERP, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	.byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
+	 
+	 
 Expl_f0: .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
 	 .byte RVCL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
 	 .byte RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, EXPL, EXPL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, EXPL, EXPL, RVCL, RVCL
@@ -257,12 +278,12 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 # Byte 04: Índice máximo dos inimigos que podem aparecer (+1)
 ########################
 DifficultyOffset:	.byte 5
-DifficultyTable:	.byte 3, 7, 2, 2, 2 # Dificuldade 0
-	  		.byte 2, 5, 2, 3, 2 # Dificuldade 1
-	  		.byte 4, 3, 2, 3, 3 # Dificuldade 2
-	  		.byte 5, 2, 2, 3, 4 # Dificuldade 3
+DifficultyTable:	.byte 3, 7, 1, 3, 2 # Dificuldade 0
+	  		.byte 2, 5, 1, 3, 2 # Dificuldade 1
+	  		.byte 4, 3, 1, 3, 4 # Dificuldade 2
+	  		.byte 5, 2, 1, 3, 5 # Dificuldade 3
 	  	
-	  		.byte 6, 1, 1, 3,4 # Doomguy_ouch.png
+	  		.byte 6, 1, 1, 2,5 # Doomguy_ouch.png
 
 ####################
 # Constantes
@@ -375,6 +396,45 @@ objectLeuf:	.word Leuf_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.space 3
 
 .align 2
+# 05 - Vertical Plane
+objectVerp: 	.word Verp_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Verp_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word VerpAI		# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 5			# 20 objectType: .byte	
+		.byte 1			# 21 objectIsAnim: .byte
+		.byte 0			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 1			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
+
+.align 2
+# 96 - Vertical Plane Homing
+objectVerpH: 	.word Verh_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
+		.word Verh_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
+		.word 0			# 08 objectCollision: .word # endereço da rotina de colisão	
+		.word 0			# 12 objectAction: .word # endereço de rotina especial	
+		.half 0			# 16 objectXpos: .half
+		.half 0			# 18 objectYpos: .half			
+		.byte 96		# 20 objectType: .byte	
+		.byte 0			# 21 objectIsAnim: .byte
+VerpHSpeed:	.byte 8			# 22 objectXspeed: .byte	
+		.byte 20		# 23 objectHeight: .byte	
+		.byte 20		# 24 objectWidth: .byte	
+		.byte 0			# 25 objectDirection: .byte	
+		.byte 0			# 26 objectAnimationCounter: .byte	
+		.byte 0			# 27 objectAnimationTime: .byte	
+		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
+		.space 3
+
+
+.align 2
 # 97 - Explosion
 objectExplo:    .word Expl_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0	
 		.word Expl_f0		# 04 objectBitmapPtr1: .word # endereço do frame 1	
@@ -431,7 +491,7 @@ objectBridge:	.word Bridg_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.byte 0			# 28 objectCollided: .byte # booleana de colisão	
 		.space 3
 
-objectBridgeOffset: .byte 7
+objectBridgeOffset: .byte 9		# Número de objetos antes da ponte, precisa sempre ser atualizado se um objeto novo for adicionado antes dela
 
 # Tiro
 shotSize: 	.byte 20		# Tamanho de um tiro em bytes
@@ -443,7 +503,7 @@ shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 		.half 0			# 04 Coordenada X
 		.half 145		# 06 Coordenada Y
 		.byte -14		# 08 Velocidade Y (Negativa, porque vai para o topo)
-		.byte 11			# 09 Altura da imagem
+		.byte 12		# 09 Altura da imagem
 		.byte 2			# 10 Largura da imagem
 		.byte 1			# 11 Booleana de existência
 		.byte 0			# 12 Booleana de colisão		
@@ -451,6 +511,7 @@ shotFormat:	.word Shot_f0		# 00 Endereço do bitmap da imagem
 Shot_f0:	.byte SHOT, SHOT 
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT 
+		.byte SHOT, SHOT
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT
 		.byte SHOT, SHOT
@@ -496,6 +557,11 @@ soundFly:	.word 35		# 00 Nota
 		.word 60		# 03 Volume
 		
 soundFlyFast:	.word 45		# 00 Nota
+		.word 1000		# 01 Duração em ms
+		.word 126		# 02 Instrumento
+		.word 60		# 03 Volume
+		
+soundFlySlow:	.word 25		# 00 Nota
 		.word 1000		# 01 Duração em ms
 		.word 126		# 02 Instrumento
 		.word 60		# 03 Volume
