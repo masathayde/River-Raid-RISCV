@@ -1,3 +1,7 @@
+# Para Habilitar Stick no DE1-SoC
+# Em river_raid.s (este arquivo), na seção "Rotinas do Jogador", comentar a linha "call getInputRARS" e descomentar a linha "call getInputStick"
+
+
 # Cores devem ser repetidas 4 vezes na word
 .eqv BANK_COLOR_4 0x10101010 										# Cor da costa, deve ser verde
 .eqv RIVER_COLOR_4 0xE8E8E8E8 #0xb0b0b0b0 										# Cor do rio, azul
@@ -37,10 +41,10 @@
 .eqv PLAYER_MAX_MISSILE 20   # Número máximo de tiros na tela
 .eqv PLAYER_MISSILE DELAY 15 # Quanto tempo deve-se esperar para poder atirar de novo (em ciclos)
 .eqv PLAYER_SPEED_X 2 # Quantos pixels o jogador se move por ciclo quando é controlado
-.eqv INITIAL_LIVES 4
-.eqv INITIAL_FUEL 300
+.eqv INITIAL_LIVES 10
+.eqv INITIAL_FUEL 500
 .eqv PLAYER_INITIAL_X 140
-.eqv VERP_SPEED 2
+.eqv VERP_SPEED 1
 
 .eqv TIMESTEP 33 # Em ms
 
@@ -345,6 +349,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 	
 						la		t0,	playerCrashed
 						lbu		t1,	0(t0)				# Checagem de booleana de derrota
+						#li		t1,	0 # invencibilidade
 						beq		t1,	zero,	Update.noCrash
 						call		defeatHandler
 	
@@ -542,6 +547,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						beq		t1,	t2,	Update.genPreBridge	
 						li		t2,	14				
 						beq		t1,	t2,	Update.genPreBridge	# Se estivermos criando o bloco 15, queremos que seja o mais largo possível
+						li		t2,	0
+						beq		t1,	t2,	Update.genPreBridge
+						li		t2,	1
+						beq		t1,	t2,	Update.genPreBridge
 						li		t2,	15
 						bne		t1,	t2,	Update.normalBlock	# Se não estivermos criando o bloco 16, precisa ser ponte
 						la		t0,	blockCurrent			# É hora de criar uma ponte
@@ -555,6 +564,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						# Como a ponte fica sempre na mesma posição, não usaremos rotinas aleatórias
 						# Em vez disso, usaremos os valores fixos da memória, com um pequeno ajuste em Y
 						# Então precisamos de um simples memcpy
+						
 						la		t6,	objectPtrList			# Lista de ponteiros para objetos 0 a 6
 						la		t0,	objectListWriteIdx		# Endereço onde está o número do índice onde será salvo o objeto						
 						lbu		t1,	0(t0)				# Pegamos esse valor
@@ -590,7 +600,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t2,	difficInterv			# Pegamos o intervalo de dificuldade
 						lbu		t3,	0(t2)				
 						remu		t1,	t1,	t3			# Se o resultado da operação mod = 0, então atualizamos a dificuldade
-						bne		t1,	zero,	Update.write2Playfield	# Se não, nada fazemos
+						bne		t1,	zero,	Update.objectListUpdate	# Se não, nada fazemos
 						la		t0,	difficulty
 						lbu		t1,	0(t0)				# Carregando o valor da dificuldade
 						addi		t1,	t1,	1			# Incrementando
@@ -643,8 +653,17 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t1,	objectSize
 						lbu		a3,	0(t1)				# Tamanho do objeto
 						la		t0,	DifficultyTable			# Endereço da tabela de dificuldade
+						la		t1,	DifficultyOffset		# Endereço do offset a ser aplicado na tabela
+						la		t2,	difficulty			# Endereço do valor da dificuldade atual
+						lbu		t3,	0(t2)				# Pegamos o valor da dificuldade
+						lbu		t4,	0(t1)				# Pegando o offset
+						mul		t3,	t3,	t4			# Multiplicando dificuldade por offset para acharmos a posição na tabela
+						add		t0,	t0,	t3			# Encontramos o endereço da posição correspondente à dificuldade atual
 						lbu		a4,	3(t0)				# Probabilidade	de fuel
 						lbu		a5,	4(t0)				# Índice máximo dos inimigos
+						mv		s1,	a5
+						#ebreak
+						
 						call		generateObject
 						
 						la		t0,	blockCurrent
@@ -719,7 +738,7 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0,	Arg9
 						la		t1,	shotCreate
 						sw		t1,	0(t0)
-						call		getInputRars
+						#call		getInputRars
 						
 						
 						li		a0,	JOYSTICK_VX
@@ -737,7 +756,10 @@ Main:					la 		tp,exceptionHandling	# carrega em tp o endereço base das rotinas 
 						la		t0, 	Arg9
 						li		t1,	0xFF20021C
 						sw		t1, 0(t0)
-						#call		getInputStick
+						la		t0,	Arg10
+						la		t1,	shotCreate
+						sw		t1,	0(t0)
+						call		getInputStick
 	
 	######################
 	# ESPERA PARA ATIRAR #				
@@ -1128,6 +1150,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 	
 						# Loop infinito enquanto se espera o input do usuário					
 	gameMenu.waitInput:			li		t0,	JOYSTICK_VX
+						#ebreak
 						lw		t1,	0(t0)				# Testando para saber se o joystick está conectado
 						beq		t1,	zero,	gameMenu.waitInput.noStick						
 						li		t0,	KDMMIO_Ctrl
@@ -1136,7 +1159,7 @@ gameMenu:					la		t0,	frameToShow			# Trocamos de frame
 						lw		t4,	0(t5)				# Botão de stick, ativo em 0
 						andi		t1,	t1,	1			# Bitmask
 						bne		t1,	zero,	gameMenu.kbInput	# Voltamos a verificar se não tiver input
-						beq		t4,	zero,	gameMenu.waitInput	# Se não estiver ativo, voltamos ao começo do loop
+						bne		t4,	zero,	gameMenu.waitInput	# Se não estiver ativo, voltamos ao começo do loop
 						j		gameMenu.gameStart			# Se o botão foi pressionado, então começamos o jogo
 						
 	gameMenu.waitInput.noStick:		li		t0,	KDMMIO_Ctrl

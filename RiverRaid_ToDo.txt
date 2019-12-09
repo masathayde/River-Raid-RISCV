@@ -2,6 +2,7 @@ River Raid Todo List
 
 x Ajustar instrumentos do Midi ecall para a placa
 - Habilitar input do stick
+- Colocar mensagem ensinando a trocar o tipo de input
 
 x Colocar ponte no .data
 x Definir variável de dificuldade

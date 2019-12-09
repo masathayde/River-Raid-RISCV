@@ -235,8 +235,8 @@ Plyr_0:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL #10X
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL #10X
          .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL 
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #13 
@@ -255,9 +255,9 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL #5
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL
-         .byte RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL #10
+         .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL
+         .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL #10
          .byte RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL 
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL #12
          .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, PLYR, PLYR, PLYR, PLYR, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL
@@ -279,21 +279,20 @@ Plyr_1:  .byte RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL, RVCL,
 ########################
 DifficultyOffset:	.byte 5
 DifficultyTable:	.byte 3, 7, 1, 3, 2 # Dificuldade 0
-	  		.byte 2, 5, 1, 3, 2 # Dificuldade 1
-	  		.byte 4, 3, 2, 3, 4 # Dificuldade 2
-	  		.byte 5, 2, 2, 3, 5 # Dificuldade 3
-	  	
-	  		.byte 6, 1, 1, 2,5 # Doomguy_ouch.png
+	  		.byte 3, 5, 1, 3, 3 # Dificuldade 1
+	  		.byte 3, 5, 1, 4, 4 # Dificuldade 2
+	  		.byte 4, 4, 1, 4, 5 # Dificuldade 3
+	  		#.byte 6, 1, 1, 2, 5 # Doomguy_ouch.png
 
 ####################
 # Constantes
 ####################
 .align 1
-fuelMax: .half 300
+fuelMax: .half INITIAL_FUEL
 fuelChargeRate:	.byte 7
 fuelLossRate:	.byte 1
-maxDiffic: .byte 4				# Dificuldade máxima
-difficInterv: .byte 2				# Número de seções para que haja aumento de dificuldade
+maxDiffic: .byte 3				# Dificuldade máxima
+difficInterv: .byte 3				# Número de seções para que haja aumento de dificuldade
 
 #########################
 # Objetos
@@ -329,7 +328,7 @@ objectHeli:	.word Heli_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 1			# 20 objectType: .byte	
 		.byte 1			# 21 objectIsAnim: .byte
-		.byte 3			# 22 objectXspeed: .byte	
+		.byte 2			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -348,7 +347,7 @@ objectShip:	.word Ship_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 2			# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
-		.byte 2			# 22 objectXspeed: .byte	
+		.byte 1			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -367,7 +366,7 @@ objectPlane: 	.word Plane_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 3			# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
-		.byte 12		# 22 objectXspeed: .byte	
+		.byte 6			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
@@ -424,7 +423,7 @@ objectVerpH: 	.word Verh_f0		# 00 objectBitmapPtr0: .word # endereço do frame 0
 		.half 0			# 18 objectYpos: .half			
 		.byte 96		# 20 objectType: .byte	
 		.byte 0			# 21 objectIsAnim: .byte
-VerpHSpeed:	.byte 8			# 22 objectXspeed: .byte	
+VerpHSpeed:	.byte 5			# 22 objectXspeed: .byte	
 		.byte 20		# 23 objectHeight: .byte	
 		.byte 20		# 24 objectWidth: .byte	
 		.byte 0			# 25 objectDirection: .byte	
